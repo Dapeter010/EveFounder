@@ -7,6 +7,7 @@ use App\Models\UserProfile;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
 
@@ -154,6 +155,8 @@ class AuthController extends Controller
 
     public function login(Request $request): JsonResponse
     {
+        Log::info("Login was attempted");
+
         $validator = Validator::make($request->all(), [
             'emailOrUsername' => 'required|string',
             'password' => 'required',
