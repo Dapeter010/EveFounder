@@ -3,12 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 //use App\Http\Controllers\Controller;
+use App\Models\User;
 use App\Models\UserProfile;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 
 class AuthController extends Controller
@@ -102,10 +103,29 @@ class AuthController extends Controller
         }
 
         // Generate a unique user ID (in real app, this would come from Supabase)
-        $userId = (string) \Illuminate\Support\Str::uuid();
+        $userId = \Illuminate\Support\Str::uuid();
+
+        // Create user in users table
+        $user = User::create([
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'first_name' => $request->firstName,
+            'last_name' => $request->lastName,
+            'date_of_birth' => $request->dateOfBirth,
+            'gender' => $request->gender,
+            'location' => $request->location,
+            'bio' => $request->bio,
+            'interests' => $request->interests,
+            'latitude' => $request->latitude,
+            'longitude' => $request->longitude,
+            'height' => $request->height,
+            'education' => $request->educationLevel,
+            'profession' => $request->occupation,
+            'relationship_type' => $request->relationshipGoals,
+        ]);
 
         $userProfile = UserProfile::create([
-            'user_id' => $userId,
+            'user_id' => $user->id,
             'first_name' => $request->firstName,
             'last_name' => $request->lastName,
             'username' => $request->username,
@@ -147,16 +167,14 @@ class AuthController extends Controller
             'success' => true,
             'message' => 'User registered successfully',
             'data' => [
-                'user' => $userProfile,
-                'token' => 'mock-token-' . $userId, // In real app, generate proper JWT
+                'user' => $user->load('photos', 'preferences', 'subscription'),
+                'token' => 'mock-token-' . $user->id,
             ]
         ], 201);
     }
 
     public function login(Request $request): JsonResponse
     {
-        Log::info("Login was attempted");
-
         $validator = Validator::make($request->all(), [
             'emailOrUsername' => 'required|string',
             'password' => 'required',
@@ -172,74 +190,23 @@ class AuthController extends Controller
 
         $loginField = $request->emailOrUsername;
 
-        // Check if it's an email or username
+        // Find user by email or username
+        $user = null;
         if (filter_var($loginField, FILTER_VALIDATE_EMAIL)) {
-            // It's an email - in real app, verify with Supabase auth
-            $user = UserProfile::where('user_id', 'demo-user-id')->first();
+            $user = User::where('email', $loginField)->first();
         } else {
-            // It's a username
-            $user = UserProfile::where('username', $loginField)->first();
+            $userProfile = UserProfile::where('username', $loginField)->first();
+            if ($userProfile) {
+                $user = User::find($userProfile->user_id);
+            }
         }
 
-        // Demo authentication - in real app, verify with Supabase
-        $validCredentials = [
-            ['email' => 'demo@evefound.com', 'username' => 'demo', 'password' => 'password123'],
-            ['email' => 'emma@example.com', 'username' => 'emma', 'password' => 'password'],
-            ['email' => 'john@example.com', 'username' => 'john', 'password' => 'password'],
-        ];
-
-        $validUser = collect($validCredentials)->first(function ($cred) use ($loginField, $request) {
-            return ($cred['email'] === $loginField || $cred['username'] === $loginField) &&
-                   $cred['password'] === $request->password;
-        });
-
-        if (!$validUser) {
+        if (!$user || !Hash::check($request->password, $user->password)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Invalid credentials'
             ], 401);
         }
-
-        // Create or get demo user
-        $user = UserProfile::firstOrCreate(
-            ['username' => $validUser['username']],
-            [
-                'user_id' => 'demo-user-' . $validUser['username'],
-                'first_name' => ucfirst($validUser['username']),
-                'last_name' => 'User',
-                'username' => $validUser['username'],
-                'phone_number' => '+44 7123 456789',
-                'date_of_birth' => '1995-01-01',
-                'gender' => 'male',
-                'sexual_orientation' => 'straight',
-                'location' => 'London',
-                'state' => 'England',
-                'country' => 'United Kingdom',
-                'preferred_genders' => ['female'],
-                'preferred_age_range' => [22, 32],
-                'preferred_distance' => 25,
-                'relationship_goals' => 'long-term',
-                'height' => 180,
-                'body_type' => 'athletic',
-                'ethnicity' => 'White British',
-                'hair_color' => 'brown',
-                'eye_color' => 'blue',
-                'education_level' => 'bachelors',
-                'occupation' => 'Software Developer',
-                'religion' => 'agnostic',
-                'drinking_habits' => 'socially',
-                'smoking_habits' => 'never',
-                'exercise_frequency' => 'regularly',
-                'interests' => ['Technology', 'Travel', 'Fitness'],
-                'bio' => 'Tech enthusiast who loves to travel and stay fit.',
-                'perfect_first_date' => 'A nice coffee shop where we can talk and get to know each other.',
-                'favorite_weekend' => 'Exploring new places or relaxing at home with a good book.',
-                'surprising_fact' => 'I can solve a Rubik\'s cube in under 2 minutes!',
-                'photos' => [],
-                'registration_date' => now(),
-                'last_active_at' => now(),
-            ]
-        );
 
         if (!$user->is_active) {
             return response()->json([
@@ -257,7 +224,7 @@ class AuthController extends Controller
             'success' => true,
             'message' => 'Login successful',
             'data' => [
-                'user' => $user,
+                'user' => $user->load('photos', 'preferences', 'subscription'),
                 'token' => $token,
             ]
         ]);
@@ -275,8 +242,17 @@ class AuthController extends Controller
 
     public function me(Request $request): JsonResponse
     {
-        // In real app, get user from token
-        $user = UserProfile::where('username', 'demo')->first();
+        // Extract user ID from token (mock implementation)
+        $authHeader = $request->header('Authorization');
+        if (!$authHeader || !str_starts_with($authHeader, 'Bearer mock-token-')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid token'
+            ], 401);
+        }
+
+        $userId = str_replace('Bearer mock-token-', '', $authHeader);
+        $user = User::find($userId);
 
         if (!$user) {
             return response()->json([
@@ -287,14 +263,16 @@ class AuthController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $user
+            'data' => $user->load('photos', 'preferences', 'subscription')
         ]);
     }
 
     public function updateProfile(Request $request): JsonResponse
     {
-        // In real app, get user from token
-        $user = UserProfile::where('username', 'demo')->first();
+        // Extract user ID from token
+        $authHeader = $request->header('Authorization');
+        $userId = str_replace('Bearer mock-token-', '', $authHeader);
+        $user = User::find($userId);
 
         if (!$user) {
             return response()->json([
@@ -330,14 +308,15 @@ class AuthController extends Controller
             'interests',
             'location',
             'height',
-            'occupation',
-            'relationship_goals',
+            'education',
+            'profession',
+            'relationship_type',
         ]));
 
         return response()->json([
             'success' => true,
             'message' => 'Profile updated successfully',
-            'data' => $user->fresh()
+            'data' => $user->fresh()->load('photos', 'preferences', 'subscription')
         ]);
     }
 }

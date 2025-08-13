@@ -54,12 +54,7 @@ class User extends Authenticatable
     // Relationships
     public function photos(): HasMany
     {
-        return $this->hasMany(UserPhoto::class)->orderBy('order');
-    }
-
-    public function primaryPhoto(): HasOne
-    {
-        return $this->hasOne(UserPhoto::class)->where('is_primary', true);
+        return $this->hasMany(UserPhoto::class);
     }
 
     public function preferences(): HasOne
@@ -79,44 +74,44 @@ class User extends Authenticatable
 
     public function sentLikes(): HasMany
     {
-        return $this->hasMany(Like::class, 'liker_id');
+        return $this->hasMany(Like::class, 'liker_id', 'id');
     }
 
     public function receivedLikes(): HasMany
     {
-        return $this->hasMany(Like::class, 'liked_id');
+        return $this->hasMany(Like::class, 'liked_id', 'id');
     }
 
     public function matches(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'matches', 'user1_id', 'user2_id')
+        return $this->belongsToMany(User::class, 'matches', 'user1_id', 'user2_id', 'id', 'id')
             ->withPivot('matched_at', 'is_active')
             ->wherePivot('is_active', true);
     }
 
     public function sentMessages(): HasMany
     {
-        return $this->hasMany(Message::class, 'sender_id');
+        return $this->hasMany(Message::class, 'sender_id', 'id');
     }
 
     public function receivedMessages(): HasMany
     {
-        return $this->hasMany(Message::class, 'receiver_id');
+        return $this->hasMany(Message::class, 'receiver_id', 'id');
     }
 
     public function profileBoosts(): HasMany
     {
-        return $this->hasMany(ProfileBoost::class);
+        return $this->hasMany(ProfileBoost::class, 'user_id', 'id');
     }
 
     public function profileViews(): HasMany
     {
-        return $this->hasMany(ProfileView::class, 'viewed_id');
+        return $this->hasMany(ProfileView::class, 'viewed_id', 'id');
     }
 
     public function notifications(): HasMany
     {
-        return $this->hasMany(Notification::class);
+        return $this->hasMany(Notification::class, 'user_id', 'id');
     }
 
     // Helper methods
@@ -154,13 +149,13 @@ class User extends Authenticatable
         $earthRadius = 3959; // miles
         $latDelta = deg2rad($user->latitude - $this->latitude);
         $lonDelta = deg2rad($user->longitude - $this->longitude);
-        
+
         $a = sin($latDelta / 2) * sin($latDelta / 2) +
-             cos(deg2rad($this->latitude)) * cos(deg2rad($user->latitude)) *
-             sin($lonDelta / 2) * sin($lonDelta / 2);
-        
+            cos(deg2rad($this->latitude)) * cos(deg2rad($user->latitude)) *
+            sin($lonDelta / 2) * sin($lonDelta / 2);
+
         $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
-        
+
         return $earthRadius * $c;
     }
 }

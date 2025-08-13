@@ -70,8 +70,11 @@ Route::group(['middleware' => []], function () { // In real app: ['middleware' =
     Route::get('/verification/status', [VerificationController::class, 'getStatus']);
 
     // Subscription routes
-    Route::get('/subscriptions', [SubscriptionController::class, 'index']);
-    Route::post('/subscriptions/cancel', [SubscriptionController::class, 'cancel']);
+    Route::get('/subscription', [SubscriptionController::class, 'index']);
+    Route::post('/subscription/cancel', [SubscriptionController::class, 'cancel']);
+
+    // Stripe routes
+    Route::post('/stripe/checkout', [SubscriptionController::class, 'createCheckoutSession']);
 
     // Profile stats
     Route::get('/stats', [StatsController::class, 'getUserStats']);

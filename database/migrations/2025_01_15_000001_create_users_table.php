@@ -22,6 +22,7 @@ return new class extends Migration
             $table->json('interests')->nullable();
             $table->boolean('is_verified')->default(false);
             $table->boolean('is_active')->default(true);
+            $table->boolean('is_admin')->default(false);
             $table->timestamp('last_active_at')->nullable();
             $table->decimal('latitude', 10, 8)->nullable();
             $table->decimal('longitude', 11, 8)->nullable();
@@ -29,9 +30,10 @@ return new class extends Migration
             $table->string('education')->nullable();
             $table->string('profession')->nullable();
             $table->enum('relationship_type', ['casual', 'serious-relationship', 'marriage', 'friends'])->nullable();
+            $table->text('admin_notes')->nullable();
             $table->rememberToken();
             $table->timestamps();
-            
+
             $table->index(['latitude', 'longitude']);
             $table->index('last_active_at');
             $table->index('is_active');

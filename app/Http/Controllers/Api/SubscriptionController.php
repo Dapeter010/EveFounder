@@ -3,19 +3,21 @@
 namespace App\Http\Controllers\Api;
 
 //use App\Http\Controllers\Controller;
-use App\Models\UserProfile;
-use App\Models\StripeCustomer;
-use App\Models\StripeSubscription;
+use App\Models\User;
+use App\Models\Subscription;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Validator;
 
 class SubscriptionController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        // In real app, get user from token
-        $user = UserProfile::where('username', 'demo')->first();
+        // Extract user ID from token
+        $authHeader = $request->header('Authorization');
+        $userId = str_replace('Bearer mock-token-', '', $authHeader);
+        $user = User::find($userId);
 
         if (!$user) {
             return response()->json([
@@ -24,20 +26,7 @@ class SubscriptionController extends Controller
             ], 404);
         }
 
-        // Get user's Stripe customer
-        $stripeCustomer = StripeCustomer::where('user_id', $user->user_id)->first();
-
-        if (!$stripeCustomer) {
-            return response()->json([
-                'success' => true,
-                'data' => null
-            ]);
-        }
-
-        // Get active subscription
-        $subscription = StripeSubscription::where('customer_id', $stripeCustomer->customer_id)
-            ->whereNull('deleted_at')
-            ->first();
+        $subscription = $user->subscription;
 
         if (!$subscription) {
             return response()->json([
@@ -50,25 +39,40 @@ class SubscriptionController extends Controller
             'success' => true,
             'data' => [
                 'id' => $subscription->id,
-                'customer_id' => $subscription->customer_id,
-                'subscription_id' => $subscription->subscription_id,
-                'price_id' => $subscription->price_id,
+                'plan_type' => $subscription->plan_type,
                 'status' => $subscription->status,
-                'current_period_start' => $subscription->current_period_start,
-                'current_period_end' => $subscription->current_period_end,
-                'cancel_at_period_end' => $subscription->cancel_at_period_end,
-                'payment_method_brand' => $subscription->payment_method_brand,
-                'payment_method_last4' => $subscription->payment_method_last4,
+                'amount' => $subscription->amount,
+                'currency' => $subscription->currency,
+                'starts_at' => $subscription->starts_at,
+                'ends_at' => $subscription->ends_at,
+                'stripe_subscription_id' => $subscription->stripe_subscription_id,
                 'created_at' => $subscription->created_at,
                 'updated_at' => $subscription->updated_at,
             ]
         ]);
     }
 
-    public function cancel(Request $request): JsonResponse
+    public function createCheckoutSession(Request $request): JsonResponse
     {
-        // In real app, get user from token
-        $user = UserProfile::where('username', 'demo')->first();
+        $validator = Validator::make($request->all(), [
+            'price_id' => 'required|string',
+            'success_url' => 'required|url',
+            'cancel_url' => 'required|url',
+            'mode' => 'required|in:subscription,payment',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        // Extract user ID from token
+        $authHeader = $request->header('Authorization');
+        $userId = str_replace('Bearer mock-token-', '', $authHeader);
+        $user = User::find($userId);
 
         if (!$user) {
             return response()->json([
@@ -77,21 +81,51 @@ class SubscriptionController extends Controller
             ], 404);
         }
 
-        // Get user's Stripe customer
-        $stripeCustomer = StripeCustomer::where('user_id', $user->user_id)->first();
+        // In a real app, this would create a Stripe checkout session
+        // For now, we'll simulate the process and create a subscription directly
 
-        if (!$stripeCustomer) {
+        $planType = str_contains($request->price_id, 'premium') ? 'premium' : 'basic';
+        $amount = $planType === 'premium' ? 19.99 : 9.99;
+
+        // Create or update subscription
+        $subscription = Subscription::updateOrCreate(
+            ['user_id' => $user->id],
+            [
+                'plan_type' => $planType,
+                'status' => 'active',
+                'amount' => $amount,
+                'currency' => 'GBP',
+                'stripe_subscription_id' => 'sub_mock_' . uniqid(),
+                'starts_at' => now(),
+                'ends_at' => now()->addMonth(),
+            ]
+        );
+
+        // Return mock checkout URL that redirects to success page
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'sessionId' => 'cs_mock_' . uniqid(),
+                'url' => $request->success_url
+            ]
+        ]);
+    }
+
+    public function cancel(Request $request): JsonResponse
+    {
+        // Extract user ID from token
+        $authHeader = $request->header('Authorization');
+        $userId = str_replace('Bearer mock-token-', '', $authHeader);
+        $user = User::find($userId);
+
+        if (!$user) {
             return response()->json([
                 'success' => false,
-                'message' => 'No subscription found'
+                'message' => 'User not found'
             ], 404);
         }
 
-        // Get active subscription
-        $subscription = StripeSubscription::where('customer_id', $stripeCustomer->customer_id)
-            ->where('status', 'active')
-            ->whereNull('deleted_at')
-            ->first();
+        $subscription = $user->subscription;
 
         if (!$subscription) {
             return response()->json([
@@ -100,10 +134,9 @@ class SubscriptionController extends Controller
             ], 404);
         }
 
-        // In real app, cancel via Stripe API
         $subscription->update([
-            'cancel_at_period_end' => true,
-            'status' => 'canceled'
+            'status' => 'cancelled',
+            'cancelled_at' => now()
         ]);
 
         return response()->json([
