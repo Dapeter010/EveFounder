@@ -253,11 +253,11 @@ class DatabasexSeeder extends Seeder
 
         foreach ($users as $user) {
             // Create some random likes
-            $otherUsers = $users->where('user_id', '!=', $user->user_id)->random(min(3, $users->count() - 1));
+            $otherUsers = $users->where('user_id', '!=', $user->id)->random(min(3, $users->count() - 1));
 
             foreach ($otherUsers as $otherUser) {
                 Like::create([
-                    'liker_id' => $user->user_id,
+                    'liker_id' => $user->id,
                     'liked_id' => $otherUser->user_id,
                     'is_super_like' => rand(0, 10) > 8, // 20% chance of super like
                     'status' => 'pending',

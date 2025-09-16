@@ -8,9 +8,11 @@ use App\Models\UserProfile;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+
 
 class AuthController extends Controller
 {
@@ -178,6 +180,9 @@ class AuthController extends Controller
         $validator = Validator::make($request->all(), [
             'emailOrUsername' => 'required|string',
             'password' => 'required',
+        ], [
+            'emailOrUsername.required' => 'Email or username field cannot be blank',
+            'password.required' => 'Password field cannot be blank',
         ]);
 
         if ($validator->fails()) {
@@ -215,10 +220,17 @@ class AuthController extends Controller
             ], 403);
         }
 
+        // Revoke all existing tokens for this user (optional - for single session)
+        // $user->tokens()->delete();
+
+        // Create new auth token
+        $token = $user->createToken('authToken')->plainTextToken;
+
         // Update last active
         $user->update(['last_active_at' => now()]);
 
-        $token = 'mock-token-' . $user->user_id;
+        // Manually authenticate the user for this session
+        Auth::login($user);
 
         return response()->json([
             'success' => true,
@@ -232,7 +244,7 @@ class AuthController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
-        // In real app, invalidate the token
+        $request->user()->tokens()->delete();
 
         return response()->json([
             'success' => true,
@@ -242,17 +254,9 @@ class AuthController extends Controller
 
     public function me(Request $request): JsonResponse
     {
-        // Extract user ID from token (mock implementation)
-        $authHeader = $request->header('Authorization');
-        if (!$authHeader || !str_starts_with($authHeader, 'Bearer mock-token-')) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid token'
-            ], 401);
-        }
 
-        $userId = str_replace('Bearer mock-token-', '', $authHeader);
-        $user = User::find($userId);
+
+        $user = Auth::user();
 
         if (!$user) {
             return response()->json([
@@ -269,10 +273,8 @@ class AuthController extends Controller
 
     public function updateProfile(Request $request): JsonResponse
     {
-        // Extract user ID from token
-        $authHeader = $request->header('Authorization');
-        $userId = str_replace('Bearer mock-token-', '', $authHeader);
-        $user = User::find($userId);
+        $user = Auth::user();
+
 
         if (!$user) {
             return response()->json([

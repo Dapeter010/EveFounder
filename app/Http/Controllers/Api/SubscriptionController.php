@@ -8,16 +8,15 @@ use App\Models\Subscription;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 
 class SubscriptionController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        // Extract user ID from token
-        $authHeader = $request->header('Authorization');
-        $userId = str_replace('Bearer mock-token-', '', $authHeader);
-        $user = User::find($userId);
+
+        $user = Auth::user();
 
         if (!$user) {
             return response()->json([
@@ -69,10 +68,8 @@ class SubscriptionController extends Controller
             ], 422);
         }
 
-        // Extract user ID from token
-        $authHeader = $request->header('Authorization');
-        $userId = str_replace('Bearer mock-token-', '', $authHeader);
-        $user = User::find($userId);
+        $user = Auth::user();
+
 
         if (!$user) {
             return response()->json([
@@ -113,10 +110,8 @@ class SubscriptionController extends Controller
 
     public function cancel(Request $request): JsonResponse
     {
-        // Extract user ID from token
-        $authHeader = $request->header('Authorization');
-        $userId = str_replace('Bearer mock-token-', '', $authHeader);
-        $user = User::find($userId);
+        $user = Auth::user();
+
 
         if (!$user) {
             return response()->json([

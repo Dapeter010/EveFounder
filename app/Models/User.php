@@ -114,6 +114,11 @@ class User extends Authenticatable
         return $this->hasMany(Notification::class, 'user_id', 'id');
     }
 
+    public function userProfile(): HasOne
+    {
+        return $this->hasOne(UserProfile::class, 'user_id', 'id');
+    }
+
     // Helper methods
     public function getAgeAttribute(): int
     {

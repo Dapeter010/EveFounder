@@ -44,7 +44,7 @@ class VerificationController extends Controller
 
         // Create content moderation entry
         $verification = ContentModeration::create([
-            'user_id' => $user->user_id,
+            'user_id' => $user->id,
             'content_type' => 'photo',
             'content_url' => Storage::url($path),
             'status' => 'pending',
@@ -74,7 +74,7 @@ class VerificationController extends Controller
             ], 404);
         }
 
-        $verification = ContentModeration::where('user_id', $user->user_id)
+        $verification = ContentModeration::where('user_id', $user->id)
             ->where('content_type', 'photo')
             ->latest()
             ->first();

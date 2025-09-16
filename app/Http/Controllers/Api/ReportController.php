@@ -42,7 +42,7 @@ class ReportController extends Controller
             ], 404);
         }
 
-        if ($user->user_id === $request->reported_id) {
+        if ($user->id === $request->reported_id) {
             return response()->json([
                 'success' => false,
                 'message' => 'Cannot report yourself'
@@ -50,7 +50,7 @@ class ReportController extends Controller
         }
 
         $report = Report::create([
-            'reporter_id' => $user->user_id,
+            'reporter_id' => $user->id,
             'reported_id' => $request->reported_id,
             'type' => $request->type,
             'reason' => $request->reason,
@@ -86,7 +86,7 @@ class ReportController extends Controller
             ], 404);
         }
 
-        if ($user->user_id === $userId) {
+        if ($user->id === $userId) {
             return response()->json([
                 'success' => false,
                 'message' => 'Cannot block yourself'
@@ -94,7 +94,7 @@ class ReportController extends Controller
         }
 
         // Check if already blocked
-        $existingBlock = BlockedUser::where('blocker_id', $user->user_id)
+        $existingBlock = BlockedUser::where('blocker_id', $user->id)
             ->where('blocked_id', $userId)
             ->first();
 
@@ -106,7 +106,7 @@ class ReportController extends Controller
         }
 
         BlockedUser::create([
-            'blocker_id' => $user->user_id,
+            'blocker_id' => $user->id,
             'blocked_id' => $userId,
             'reason' => $request->reason,
         ]);
@@ -129,7 +129,7 @@ class ReportController extends Controller
             ], 404);
         }
 
-        $blockedUsers = BlockedUser::where('blocker_id', $user->user_id)
+        $blockedUsers = BlockedUser::where('blocker_id', $user->id)
             ->with('blocked')
             ->get()
             ->map(function ($block) {

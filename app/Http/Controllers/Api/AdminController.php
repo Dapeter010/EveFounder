@@ -120,18 +120,18 @@ class AdminController extends Controller
 
         // Get user stats
         $stats = [
-            'total_likes_sent' => Like::where('liker_id', $user->user_id)->count(),
-            'total_likes_received' => Like::where('liked_id', $user->user_id)->count(),
+            'total_likes_sent' => Like::where('liker_id', $user->id)->count(),
+            'total_likes_received' => Like::where('liked_id', $user->id)->count(),
             'total_matches' => DB::table('matches')
                 ->where(function ($query) use ($user) {
-                    $query->where('user1_id', $user->user_id)
-                          ->orWhere('user2_id', $user->user_id);
+                    $query->where('user1_id', $user->id)
+                          ->orWhere('user2_id', $user->id);
                 })
                 ->count(),
-            'total_messages_sent' => DB::table('messages')->where('sender_id', $user->user_id)->count(),
-            'total_messages_received' => DB::table('messages')->where('receiver_id', $user->user_id)->count(),
-            'profile_views' => ProfileView::where('viewed_id', $user->user_id)->count(),
-            'total_spent' => ProfileBoost::where('user_id', $user->user_id)->sum('cost'),
+            'total_messages_sent' => DB::table('messages')->where('sender_id', $user->id)->count(),
+            'total_messages_received' => DB::table('messages')->where('receiver_id', $user->id)->count(),
+            'profile_views' => ProfileView::where('viewed_id', $user->id)->count(),
+            'total_spent' => ProfileBoost::where('user_id', $user->id)->sum('cost'),
         ];
 
         return response()->json([
@@ -526,7 +526,7 @@ class AdminController extends Controller
             ->get()
             ->map(function ($user) {
                 return [
-                    'ID' => $user->user_id,
+                    'ID' => $user->id,
                     'Name' => $user->first_name . ' ' . $user->last_name,
                     'Username' => $user->username,
                     'Age' => $user->date_of_birth->age,

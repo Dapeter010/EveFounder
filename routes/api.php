@@ -26,7 +26,7 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::get('/filters/options', [StatsController::class, 'getFilterOptions']);
 
 // Protected routes
-Route::group(['middleware' => []], function () { // In real app: ['middleware' => ['auth:sanctum']]
+Route::group(['middleware' => ['auth:sanctum']], function () {
     // Auth routes
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
@@ -34,13 +34,13 @@ Route::group(['middleware' => []], function () { // In real app: ['middleware' =
 
     // Discovery routes
     Route::get('/discover', [DiscoveryController::class, 'discover']);
-    Route::post('/users/{targetUser}/like', [DiscoveryController::class, 'like']);
-    Route::post('/users/{targetUser}/pass', [DiscoveryController::class, 'pass']);
+    Route::post('/users/{targetUser}/like', [DiscoveryController::class, 'likeUser']);
+    Route::post('/users/{targetUser}/pass', [DiscoveryController::class, 'passUser']);
 
     // Matches routes
     Route::get('/matches', [MatchController::class, 'index']);
 
-    // Likes routes
+    // Likes routes`
     Route::get('/likes/received', [MatchController::class, 'getReceivedLikes']);
     Route::get('/likes/sent', [MatchController::class, 'getSentLikes']);
 
@@ -49,6 +49,8 @@ Route::group(['middleware' => []], function () { // In real app: ['middleware' =
     Route::get('/conversations/{matchId}/messages', [MessageController::class, 'getMessages']);
     Route::post('/conversations/{matchId}/messages', [MessageController::class, 'sendMessage']);
     Route::put('/messages/{messageId}/read', [MessageController::class, 'markAsRead']);
+    Route::delete('/messages/{messageId}', [MessageController::class, 'deleteMessage']);
+    Route::get('/conversations/{matchId}/info', [MessageController::class, 'getConversationInfo']);
 
     // Photo management
     Route::post('/photos', [PhotoController::class, 'store']);
@@ -64,6 +66,16 @@ Route::group(['middleware' => []], function () { // In real app: ['middleware' =
     Route::get('/boosts', [BoostController::class, 'index']);
     Route::post('/boosts', [BoostController::class, 'store']);
     Route::get('/boosts/history', [BoostController::class, 'history']);
+    Route::get('/boosts/current', [BoostController::class, 'current']);
+    Route::post('/boosts/{boostId}/cancel', [BoostController::class, 'cancel']);
+    Route::put('/boosts/{boostId}/stats', [BoostController::class, 'updateStats']);
+
+    Route::post('/boosts/checkout', [BoostController::class, 'createCheckoutSession']);
+    Route::get('/boosts/payment-status/{sessionId}', [BoostController::class, 'checkPaymentStatus']);
+
+// Optional: Keep these for backward compatibility or admin use
+    Route::post('/boosts/{boostId}/cancel', [BoostController::class, 'cancel']);
+    Route::put('/boosts/{boostId}/stats', [BoostController::class, 'updateStats']);
 
     // Verification
     Route::post('/verification/photo', [VerificationController::class, 'submitPhoto']);
@@ -98,3 +110,7 @@ Route::group(['middleware' => []], function () { // In real app: ['middleware' =
         Route::get('/export/users', [AdminController::class, 'exportUsers']);
     });
 });
+
+
+Route::post('/webhooks/stripe', [BoostController::class, 'handleWebhook'])
+    ->middleware(['verify.supabase.webhook']);

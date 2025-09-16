@@ -10,14 +10,16 @@ use App\Models\Message;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Validator;
 
 class StatsController extends Controller
 {
     public function getUserStats(Request $request): JsonResponse
     {
-        // In real app, get user from token
-        $user = UserProfile::where('username', 'demo')->first();
+        $user = Auth::user();
 
         if (!$user) {
             return response()->json([
@@ -25,22 +27,22 @@ class StatsController extends Controller
                 'message' => 'User not found'
             ], 404);
         }
-
+        Log::info("id is " . $user->id);
         $stats = [
-            'profile_views_today' => ProfileView::where('viewed_id', $user->user_id)
+            'profile_views_today' => ProfileView::where('viewed_id', $user->id)
                 ->whereDate('viewed_at', today())
                 ->count(),
-            'likes_received_new' => Like::where('liked_id', $user->user_id)
+            'likes_received_new' => Like::where('liked_id', $user->id)
                 ->where('status', 'pending')
                 ->count(),
             'total_matches' => DB::table('matches')
                 ->where(function ($query) use ($user) {
-                    $query->where('user1_id', $user->user_id)
-                          ->orWhere('user2_id', $user->user_id);
+                    $query->where('user1_id', $user->id)
+                          ->orWhere('user2_id', $user->id);
                 })
                 ->where('is_active', true)
                 ->count(),
-            'unread_messages' => Message::where('receiver_id', $user->user_id)
+            'unread_messages' => Message::where('receiver_id', $user->id)
                 ->whereNull('read_at')
                 ->count(),
         ];
