@@ -195,6 +195,7 @@ class BoostController extends Controller
                 'mode' => 'payment', // One-time payment for boosts
                 'metadata' => [
                     'user_id' => $user->id,
+                    'user_email' => $user->email,
                     'boost_id' => $boostId,
                     'pending_boost_id' => $pendingBoost->id,
                     'type' => 'boost_purchase'
