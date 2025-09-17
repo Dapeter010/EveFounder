@@ -185,7 +185,8 @@ class BoostController extends Controller
             Log::info("got to B");
 
             $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . env('SUPABASE_ANON_KEY'),
+//                'Authorization' => 'Bearer ' . env('SUPABASE_ANON_KEY'),
+                'Authorization' => 'Bearer ' . env('SUPABASE_JWT_TOKEN'),
                 'Content-Type' => 'application/json',
             ])->post(env('SUPABASE_URL') . '/functions/v1/stripe-checkout', [
                 'price_id' => $boostConfig['stripe_price_id'],
