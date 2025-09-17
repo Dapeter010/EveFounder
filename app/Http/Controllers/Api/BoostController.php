@@ -155,7 +155,7 @@ class BoostController extends Controller
                 'message' => 'You already have an active boost. Please wait until it expires before purchasing another.'
             ], 400);
         }
-
+        Log::info("got to A");
         $boostId = $request->boost_id;
         $boostOptions = $this->getBoostOptions();
         $boostConfig = $boostOptions[$boostId];
@@ -182,6 +182,8 @@ class BoostController extends Controller
 
         // Call Supabase Edge Function to create Stripe checkout session
         try {
+            Log::info("got to B");
+
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . env('SUPABASE_ANON_KEY'),
                 'Content-Type' => 'application/json',
@@ -195,8 +197,14 @@ class BoostController extends Controller
                     'boost_id' => $boostId,
                     'pending_boost_id' => $pendingBoost->id,
                     'type' => 'boost_purchase'
+                ],
+                'data' => [
+                    "boost_id" => $boostId,
+                    "success_url" => $request->success_url . '?session_id={CHECKOUT_SESSION_ID}',
+                    "cancel_url" => $request->cancel_url
                 ]
             ]);
+            Log::info("got to C");
 
             if ($response->successful()) {
                 $data = $response->json();
@@ -409,91 +417,91 @@ class BoostController extends Controller
     /**
      * Private method to activate boost after successful payment
      */
-   private function activateBoostFromPayment(array $metadata, array $sessionData): array
-{
-    $userId = $metadata['user_id'] ?? null;
-    $boostId = $metadata['boost_id'] ?? null;
-    $sessionId = $sessionData['session_id'] ?? null;
+    private function activateBoostFromPayment(array $metadata, array $sessionData): array
+    {
+        $userId = $metadata['user_id'] ?? null;
+        $boostId = $metadata['boost_id'] ?? null;
+        $sessionId = $sessionData['session_id'] ?? null;
 
-    if (!$userId || !$boostId || !$sessionId) {
-        return [
-            'success' => false,
-            'message' => 'Missing required metadata',
-            'missing' => array_filter([
-                'user_id' => !$userId,
-                'boost_id' => !$boostId,
-                'session_id' => !$sessionId
-            ])
-        ];
-    }
+        if (!$userId || !$boostId || !$sessionId) {
+            return [
+                'success' => false,
+                'message' => 'Missing required metadata',
+                'missing' => array_filter([
+                    'user_id' => !$userId,
+                    'boost_id' => !$boostId,
+                    'session_id' => !$sessionId
+                ])
+            ];
+        }
 
-    // Verify user exists
-    $user = User::find($userId);
-    if (!$user) {
-        return [
-            'success' => false,
-            'message' => 'User not found',
-            'user_id' => $userId
-        ];
-    }
+        // Verify user exists
+        $user = User::find($userId);
+        if (!$user) {
+            return [
+                'success' => false,
+                'message' => 'User not found',
+                'user_id' => $userId
+            ];
+        }
 
-    // Check for existing active boost
-    $existingBoost = ProfileBoost::where('user_id', $userId)
-        ->where('status', 'active')
-        ->where('ends_at', '>', now())
-        ->first();
+        // Check for existing active boost
+        $existingBoost = ProfileBoost::where('user_id', $userId)
+            ->where('status', 'active')
+            ->where('ends_at', '>', now())
+            ->first();
 
-    if ($existingBoost) {
-        return [
-            'success' => false,
-            'message' => 'User already has an active boost',
-            'existing_boost_id' => $existingBoost->id
-        ];
-    }
+        if ($existingBoost) {
+            return [
+                'success' => false,
+                'message' => 'User already has an active boost',
+                'existing_boost_id' => $existingBoost->id
+            ];
+        }
 
-    // Check if this session was already processed
-    $existingProcessedBoost = ProfileBoost::where('stripe_session_id', $sessionId)
-        ->where('status', 'active')
-        ->first();
+        // Check if this session was already processed
+        $existingProcessedBoost = ProfileBoost::where('stripe_session_id', $sessionId)
+            ->where('status', 'active')
+            ->first();
 
-    if ($existingProcessedBoost) {
+        if ($existingProcessedBoost) {
+            return [
+                'success' => true,
+                'message' => 'Boost already processed',
+                'boost_id' => $existingProcessedBoost->id
+            ];
+        }
+
+        $boostConfig = $this->getBoostOptions()[$boostId];
+        $duration = $boostConfig['duration'];
+
+        $startsAt = now();
+        $endsAt = $startsAt->copy()->addMinutes($duration);
+
+        // Create or update boost record
+        $boost = ProfileBoost::updateOrCreate(
+            ['stripe_session_id' => $sessionId],
+            [
+                'user_id' => $userId,
+                'boost_type' => $boostId,
+                'cost' => $boostConfig['price'],
+                'starts_at' => $startsAt,
+                'ends_at' => $endsAt,
+                'status' => 'active',
+                'stripe_payment_intent_id' => $sessionData['payment_intent_id'] ?? null,
+                'payment_completed_at' => now(),
+                'views_gained' => 0,
+                'likes_gained' => 0,
+                'matches_gained' => 0,
+            ]
+        );
+
         return [
             'success' => true,
-            'message' => 'Boost already processed',
-            'boost_id' => $existingProcessedBoost->id
+            'message' => 'Boost activated successfully',
+            'boost_id' => $boost->id
         ];
     }
-
-    $boostConfig = $this->getBoostOptions()[$boostId];
-    $duration = $boostConfig['duration'];
-
-    $startsAt = now();
-    $endsAt = $startsAt->copy()->addMinutes($duration);
-
-    // Create or update boost record
-    $boost = ProfileBoost::updateOrCreate(
-        ['stripe_session_id' => $sessionId],
-        [
-            'user_id' => $userId,
-            'boost_type' => $boostId,
-            'cost' => $boostConfig['price'],
-            'starts_at' => $startsAt,
-            'ends_at' => $endsAt,
-            'status' => 'active',
-            'stripe_payment_intent_id' => $sessionData['payment_intent_id'] ?? null,
-            'payment_completed_at' => now(),
-            'views_gained' => 0,
-            'likes_gained' => 0,
-            'matches_gained' => 0,
-        ]
-    );
-
-    return [
-        'success' => true,
-        'message' => 'Boost activated successfully',
-        'boost_id' => $boost->id
-    ];
-}
 
     public function history(Request $request): JsonResponse
     {
