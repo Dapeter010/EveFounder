@@ -35,29 +35,29 @@ class VerifySupabaseWebhook
         }
 
         // Option 2: Verify by IP whitelist (additional security)
-        $allowedIPs = config('services.supabase.allowed_webhook_ips', []);
-        if (!empty($allowedIPs) && !in_array($request->ip(), $allowedIPs)) {
-            Log::warning('Webhook from unauthorized IP', [
-                'ip' => $request->ip(),
-                'allowed_ips' => $allowedIPs
-            ]);
-
-            return response()->json(['error' => 'IP not allowed'], 403);
-        }
+//        $allowedIPs = config('services.supabase.allowed_webhook_ips', []);
+//        if (!empty($allowedIPs) && !in_array($request->ip(), $allowedIPs)) {
+//            Log::warning('Webhook from unauthorized IP', [
+//                'ip' => $request->ip(),
+//                'allowed_ips' => $allowedIPs
+//            ]);
+//
+//            return response()->json(['error' => 'IP not allowed'], 403);
+//        }
 
         // Option 3: Verify webhook source header
-        $expectedSource = 'supabase-stripe';
-        $webhookSource = $request->header('X-Webhook-Source');
-
-        if ($webhookSource !== $expectedSource) {
-            Log::warning('Invalid webhook source', [
-                'expected' => $expectedSource,
-                'received' => $webhookSource,
-                'ip' => $request->ip()
-            ]);
-
-            return response()->json(['error' => 'Invalid source'], 400);
-        }
+//        $expectedSource = 'supabase-stripe';
+//        $webhookSource = $request->header('X-Webhook-Source');
+//
+//        if ($webhookSource !== $expectedSource) {
+//            Log::warning('Invalid webhook source', [
+//                'expected' => $expectedSource,
+//                'received' => $webhookSource,
+//                'ip' => $request->ip()
+//            ]);
+//
+//            return response()->json(['error' => 'Invalid source'], 400);
+//        }
 
         return $next($request);
     }
