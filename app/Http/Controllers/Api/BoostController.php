@@ -198,11 +198,6 @@ class BoostController extends Controller
                     'pending_boost_id' => $pendingBoost->id,
                     'type' => 'boost_purchase'
                 ],
-                'data' => [
-                    "boost_id" => $boostId,
-                    "success_url" => $request->success_url . '?session_id={CHECKOUT_SESSION_ID}',
-                    "cancel_url" => $request->cancel_url
-                ]
             ]);
             Log::info("got to C");
 
