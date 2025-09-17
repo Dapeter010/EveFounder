@@ -51,6 +51,18 @@ class User extends Authenticatable
         'longitude' => 'decimal:8',
     ];
 
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($user) {
+            if (empty($user->uid)) {
+                $user->uid = (string)\Illuminate\Support\Str::uuid();
+            }
+        });
+    }
+
+
     // Relationships
     public function photos(): HasMany
     {
