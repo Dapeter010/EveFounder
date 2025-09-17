@@ -188,6 +188,7 @@ class BoostController extends Controller
                 'Authorization' => 'Bearer ' . env('SUPABASE_ANON_KEY'),
                 'Content-Type' => 'application/json',
             ])->post(env('SUPABASE_URL') . '/functions/v1/stripe-checkout', [
+                'boost_id' => $boostId,
                 'price_id' => $boostConfig['stripe_price_id'],
                 'success_url' => $request->success_url . '?session_id={CHECKOUT_SESSION_ID}',
                 'cancel_url' => $request->cancel_url,
