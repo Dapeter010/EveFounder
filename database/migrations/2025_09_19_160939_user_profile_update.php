@@ -21,9 +21,6 @@ return new class extends Migration
             // Visibility settings as JSON
             $table->json('visibility_settings')->nullable()->after('privacy_settings');
 
-            // Add is_active flag
-            $table->boolean('is_active')->default(true)->after('visibility_settings');
-
             // Add soft deletes
             $table->softDeletes();
         });
@@ -39,7 +36,6 @@ return new class extends Migration
                 'notifications',
                 'privacy_settings',
                 'visibility_settings',
-                'is_active',
                 'deleted_at'
             ]);
         });
