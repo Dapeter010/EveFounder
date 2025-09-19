@@ -271,9 +271,18 @@ class AuthController extends Controller
             ], 404);
         }
 
+        $userData = $user->load('photos', 'preferences', 'subscription')->toArray();
+
+        // Map snake_case to camelCase
+        $userData['firstName'] = $userData['first_name'] ?? null;
+        $userData['lastName'] = $userData['last_name'] ?? null;
+
+        // Optionally remove the old snake_case keys if frontend doesn’t need them
+//        unset($userData['first_name'], $userData['last_name']);
+
         return response()->json([
             'success' => true,
-            'data' => $user->load('photos', 'preferences', 'subscription')
+            'data' => $userData
         ]);
     }
 
