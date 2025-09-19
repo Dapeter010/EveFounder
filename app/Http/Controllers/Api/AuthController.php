@@ -276,7 +276,7 @@ class AuthController extends Controller
         // Map snake_case to camelCase
         $userData['firstName'] = $userData['first_name'] ?? null;
         $userData['lastName'] = $userData['last_name'] ?? null;
-
+        $userData['preferences'] = $userData['userProfile'];
         // Optionally remove the old snake_case keys if frontend doesn’t need them
 //        unset($userData['first_name'], $userData['last_name']);
 
