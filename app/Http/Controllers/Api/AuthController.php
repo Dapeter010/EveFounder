@@ -278,6 +278,8 @@ class AuthController extends Controller
         $userData['lastName'] = $userData['last_name'] ?? null;
         $userData['preferences'] = $userData['user_profile'];
         $userData['age'] = \Carbon\Carbon::parse($userData['date_of_birth'])->age;
+        $userData['photos'] = $userData['user_profile']['photos'];
+        $userData['images'] = $userData['user_profile']['photos'];
 
         // Optionally remove the old snake_case keys if frontend doesn’t need them
 //        unset($userData['first_name'], $userData['last_name']);
