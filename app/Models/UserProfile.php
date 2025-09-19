@@ -5,11 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Carbon\Carbon;
 
 class UserProfile extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'user_id',
@@ -46,6 +47,9 @@ class UserProfile extends Model
         'favorite_weekend',
         'surprising_fact',
         'photos',
+        'notifications',
+        'privacy_settings',
+        'visibility_settings',
         'registration_date',
         'is_verified',
         'is_active',
@@ -59,6 +63,9 @@ class UserProfile extends Model
         'preferred_age_range' => 'array',
         'interests' => 'array',
         'photos' => 'array',
+        'notifications' => 'array',
+        'privacy_settings' => 'array',
+        'visibility_settings' => 'array',
         'registration_date' => 'datetime',
         'is_verified' => 'boolean',
         'is_active' => 'boolean',
@@ -66,6 +73,127 @@ class UserProfile extends Model
         'latitude' => 'decimal:8',
         'longitude' => 'decimal:8',
     ];
+
+    protected $dates = [
+        'created_at',
+        'updated_at',
+        'deleted_at',
+        'registration_date',
+        'last_active_at',
+    ];
+
+    // Relationships
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function subscription()
+    {
+        return $this->hasOne(Subscription::class, 'user_id', 'user_id');
+    }
+
+    // Default settings methods
+    public function getDefaultNotifications()
+    {
+        return [
+            'new_matches' => true,
+            'messages' => true,
+            'likes' => false,
+            'marketing' => false,
+        ];
+    }
+
+    public function getDefaultPrivacySettings()
+    {
+        return [
+            'show_age' => true,
+            'show_distance' => true,
+            'online_status' => true,
+            'read_receipts' => true,
+        ];
+    }
+
+    public function getDefaultVisibilitySettings()
+    {
+        return [
+            'show_me' => true,
+        ];
+    }
+
+    // Mutators to ensure defaults
+    public function setNotificationsAttribute($value)
+    {
+        $defaults = $this->getDefaultNotifications();
+        $this->attributes['notifications'] = json_encode(array_merge($defaults, $value ?? []));
+    }
+
+    public function setPrivacySettingsAttribute($value)
+    {
+        $defaults = $this->getDefaultPrivacySettings();
+        $this->attributes['privacy_settings'] = json_encode(array_merge($defaults, $value ?? []));
+    }
+
+    public function setVisibilitySettingsAttribute($value)
+    {
+        $defaults = $this->getDefaultVisibilitySettings();
+        $this->attributes['visibility_settings'] = json_encode(array_merge($defaults, $value ?? []));
+    }
+
+    // Accessors
+    public function getNotificationsAttribute($value)
+    {
+        $decoded = json_decode($value, true) ?? [];
+        return array_merge($this->getDefaultNotifications(), $decoded);
+    }
+
+    public function getPrivacySettingsAttribute($value)
+    {
+        $decoded = json_decode($value, true) ?? [];
+        return array_merge($this->getDefaultPrivacySettings(), $decoded);
+    }
+
+    public function getVisibilitySettingsAttribute($value)
+    {
+        $decoded = json_decode($value, true) ?? [];
+        return array_merge($this->getDefaultVisibilitySettings(), $decoded);
+    }
+
+    // Scopes
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    public function scopeVisible($query)
+    {
+        return $query->active()
+            ->where(function ($q) {
+                $q->whereJsonContains('visibility_settings->show_me', true)
+                    ->orWhereNull('visibility_settings');
+            });
+    }
+
+    // Helper methods
+    public function getAge()
+    {
+        return $this->date_of_birth ? $this->date_of_birth->age : null;
+    }
+
+    public function getPrimaryPhoto()
+    {
+        if (!$this->photos || !is_array($this->photos)) {
+            return null;
+        }
+
+        $primary = collect($this->photos)->firstWhere('is_primary', true);
+        return $primary ?? $this->photos[0] ?? null;
+    }
+
+    public function updateLastActive()
+    {
+        $this->update(['last_active_at' => now()]);
+    }
 
     public function likes(): HasMany
     {
@@ -118,6 +246,16 @@ class UserProfile extends Model
         return $this->first_name . ' ' . $this->last_name;
     }
 
+
+//    public function isOnline()
+//    {
+//        if (!$this->last_active_at) {
+//            return false;
+//        }
+//
+//        return $this->last_active_at->gt(now()->subMinutes(5));
+//    }
+
     public function isOnline(): bool
     {
         return $this->last_active_at && $this->last_active_at->diffInMinutes(now()) <= 15;
@@ -132,13 +270,13 @@ class UserProfile extends Model
         $earthRadius = 3959; // miles
         $latDelta = deg2rad($user->latitude - $this->latitude);
         $lonDelta = deg2rad($user->longitude - $this->longitude);
-        
+
         $a = sin($latDelta / 2) * sin($latDelta / 2) +
-             cos(deg2rad($this->latitude)) * cos(deg2rad($user->latitude)) *
-             sin($lonDelta / 2) * sin($lonDelta / 2);
-        
+            cos(deg2rad($this->latitude)) * cos(deg2rad($user->latitude)) *
+            sin($lonDelta / 2) * sin($lonDelta / 2);
+
         $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
-        
+
         return $earthRadius * $c;
     }
 

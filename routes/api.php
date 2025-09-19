@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\SettingsController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
@@ -31,6 +32,14 @@ Route::group(['middleware' => ['auth:sanctum']], function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
     Route::put('/profile', [AuthController::class, 'updateProfile']);
+
+    // Settings routes - ADD THESE
+    Route::get('/settings', [SettingsController::class, 'getSettings']);
+    Route::put('/settings/notifications', [SettingsController::class, 'updateNotifications']);
+    Route::put('/settings/privacy', [SettingsController::class, 'updatePrivacy']);
+    Route::put('/settings/discovery', [SettingsController::class, 'updateDiscovery']);
+    Route::delete('/account', [SettingsController::class, 'deleteAccount']);
+    Route::get('/account/delete-info', [SettingsController::class, 'getDeleteAccountInfo']);
 
     // Discovery routes
     Route::get('/discover', [DiscoveryController::class, 'discover']);
