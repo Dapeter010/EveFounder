@@ -82,11 +82,27 @@ class UserProfile extends Model
         'last_active_at',
     ];
 
+
+
     // Relationships
     public function user()
     {
         return $this->belongsTo(User::class);
     }
+
+    public function getPhotosAttribute($value)
+    {
+        $photos = json_decode($value, true) ?? [];
+
+        return collect($photos)->map(function ($photo) {
+            // If URL is relative, prepend app URL
+            if (isset($photo['url']) && !str_starts_with($photo['url'], 'http')) {
+                $photo['url'] = url($photo['url']);
+            }
+            return $photo;
+        })->toArray();
+    }
+
 
     public function subscription()
     {
