@@ -177,7 +177,7 @@ class AuthController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => $e
+                'message' => $e->getMessage(),
             ], 403);
         }
     }
