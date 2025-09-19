@@ -90,7 +90,7 @@ class SubscriptionController extends Controller
                 'cancel_url' => $request->cancel_url,
                 'mode' => $request->mode,
                 'metadata' => [
-                    'user_id' => $user->id,
+                    'user_id' => $user->uid,
                     'user_email' => $user->email,
                     'type' => $request->mode === 'subscription' ? 'subscription_purchase' : 'one_time_payment'
                 ],
