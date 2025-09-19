@@ -82,10 +82,10 @@ class AuthController extends Controller
             if ($validator->fails()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $validator->errors()
+                    'message' => implode(",", $validator->errors()->all()),
                 ], 422);
             }
+
 
             // Handle photo uploads
             $photos = [];
@@ -195,8 +195,7 @@ class AuthController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $validator->errors()
+                'message' => implode(",", $validator->errors()->all()),
             ], 422);
         }
 
@@ -305,8 +304,7 @@ class AuthController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $validator->errors()
+                'message' => implode(",", $validator->errors()->all()),
             ], 422);
         }
 

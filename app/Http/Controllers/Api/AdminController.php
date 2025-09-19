@@ -154,8 +154,7 @@ class AdminController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $validator->errors()
+                'message' => implode(",", $validator->errors()->all()),
             ], 422);
         }
 
@@ -227,8 +226,7 @@ class AdminController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $validator->errors()
+                'message' => implode(",", $validator->errors()->all()),
             ], 422);
         }
 
@@ -372,8 +370,7 @@ class AdminController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $validator->errors()
+                'message' => implode(",", $validator->errors()->all()),
             ], 422);
         }
 
@@ -466,8 +463,7 @@ class AdminController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $validator->errors()
+                'message' => implode(",", $validator->errors()->all()),
             ], 422);
         }
 
@@ -501,8 +497,7 @@ class AdminController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $validator->errors()
+                'message' => implode(",", $validator->errors()->all()),
             ], 422);
         }
 
