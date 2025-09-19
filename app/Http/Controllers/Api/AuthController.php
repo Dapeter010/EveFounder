@@ -271,7 +271,7 @@ class AuthController extends Controller
             ], 404);
         }
 
-        $userData = $user->load('photos', 'preferences', 'subscription')->toArray();
+        $userData = $user->load('photos', 'user_profile', 'subscription')->toArray();
 
         // Map snake_case to camelCase
         $userData['firstName'] = $userData['first_name'] ?? null;
