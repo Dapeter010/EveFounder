@@ -18,161 +18,168 @@ class AuthController extends Controller
 {
     public function register(Request $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            // Basic Info
-            'firstName' => 'required|string|max:255',
-            'lastName' => 'required|string|max:255',
-            'username' => 'required|string|min:3|max:50|unique:user_profiles,username',
-            'email' => 'required|email|max:255',
-            'phoneNumber' => 'required|string|max:20',
-            'password' => 'required|string|min:8',
-            'confirmPassword' => 'required|string|same:password',
+        try {
+            $validator = Validator::make($request->all(), [
+                // Basic Info
+                'firstName' => 'required|string|max:255',
+                'lastName' => 'required|string|max:255',
+                'username' => 'required|string|min:3|max:50|unique:user_profiles,username',
+                'email' => 'required|email|max:255',
+                'phoneNumber' => 'required|string|max:20',
+                'password' => 'required|string|min:8',
+                'confirmPassword' => 'required|string|same:password',
 
-            // Demographics
-            'dateOfBirth' => 'required|date|before:18 years ago',
-            'gender' => 'required|in:male,female,non-binary,other',
-            'sexualOrientation' => 'required|in:straight,gay,lesbian,bisexual,pansexual,asexual,other',
-            'location' => 'required|string|max:255',
-            'state' => 'required|string|max:255',
-            'country' => 'required|string|max:255',
-            'latitude' => 'nullable|numeric',
-            'longitude' => 'nullable|numeric',
+                // Demographics
+                'dateOfBirth' => 'required|date|before:18 years ago',
+                'gender' => 'required|in:male,female,non-binary,other',
+                'sexualOrientation' => 'required|in:straight,gay,lesbian,bisexual,pansexual,asexual,other',
+                'location' => 'required|string|max:255',
+                'state' => 'required|string|max:255',
+                'country' => 'required|string|max:255',
+                'latitude' => 'nullable|numeric',
+                'longitude' => 'nullable|numeric',
 
-            // Match Preferences
-            'preferredGenders' => 'required|array|min:1',
-            'preferredGenders.*' => 'string|in:male,female,non-binary,other',
-            'preferredAgeRange' => 'required|array|size:2',
-            'preferredAgeRange.*' => 'integer|min:18|max:65',
-            'preferredDistance' => 'required|integer|min:1|max:500',
-            'relationshipGoals' => 'required|in:casual,long-term,marriage,friendship,other',
+                // Match Preferences
+                'preferredGenders' => 'required|array|min:1',
+                'preferredGenders.*' => 'string|in:male,female,non-binary,other',
+                'preferredAgeRange' => 'required|array|size:2',
+                'preferredAgeRange.*' => 'integer|min:18|max:65',
+                'preferredDistance' => 'required|integer|min:1|max:500',
+                'relationshipGoals' => 'required|in:casual,long-term,marriage,friendship,other',
 
-            // Appearance
-            'height' => 'required|integer|min:100|max:250',
-            'bodyType' => 'required|in:slim,athletic,average,curvy,plus-size,muscular',
-            'ethnicity' => 'required|string|max:255',
-            'hairColor' => 'required|in:black,brown,blonde,red,gray,white,other',
-            'eyeColor' => 'required|in:brown,blue,green,hazel,gray,other',
+                // Appearance
+                'height' => 'required|integer|min:100|max:250',
+                'bodyType' => 'required|in:slim,athletic,average,curvy,plus-size,muscular',
+                'ethnicity' => 'required|string|max:255',
+                'hairColor' => 'required|in:black,brown,blonde,red,gray,white,other',
+                'eyeColor' => 'required|in:brown,blue,green,hazel,gray,other',
 
-            // Lifestyle
-            'educationLevel' => 'required|in:high-school,some-college,bachelors,masters,phd,trade-school,other',
-            'occupation' => 'required|string|max:255',
-            'religion' => 'required|in:christian,muslim,jewish,hindu,buddhist,atheist,agnostic,spiritual,other',
-            'drinkingHabits' => 'required|in:never,rarely,socially,regularly,prefer-not-to-say',
-            'smokingHabits' => 'required|in:never,rarely,socially,regularly,trying-to-quit,prefer-not-to-say',
-            'exerciseFrequency' => 'required|in:never,rarely,sometimes,regularly,daily',
+                // Lifestyle
+                'educationLevel' => 'required|in:high-school,some-college,bachelors,masters,phd,trade-school,other',
+                'occupation' => 'required|string|max:255',
+                'religion' => 'required|in:christian,muslim,jewish,hindu,buddhist,atheist,agnostic,spiritual,other',
+                'drinkingHabits' => 'required|in:never,rarely,socially,regularly,prefer-not-to-say',
+                'smokingHabits' => 'required|in:never,rarely,socially,regularly,trying-to-quit,prefer-not-to-say',
+                'exerciseFrequency' => 'required|in:never,rarely,sometimes,regularly,daily',
 
-            // Interests & Personality
-            'interests' => 'required|array|min:3',
-            'interests.*' => 'string|max:50',
-            'bio' => 'required|string|min:50|max:500',
-            'perfectFirstDate' => 'required|string|min:20|max:1000',
-            'favoriteWeekend' => 'required|string|min:20|max:1000',
-            'surprisingFact' => 'required|string|min:20|max:1000',
+                // Interests & Personality
+                'interests' => 'required|array|min:3',
+                'interests.*' => 'string|max:50',
+                'bio' => 'required|string|min:50|max:500',
+                'perfectFirstDate' => 'required|string|min:20|max:1000',
+                'favoriteWeekend' => 'required|string|min:20|max:1000',
+                'surprisingFact' => 'required|string|min:20|max:1000',
 
-            // Photos
-            'photo_0' => 'required|image|mimes:jpeg,png,jpg|max:5120', // 5MB max
-            'photo_1' => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
-            'photo_2' => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
-            'photo_3' => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
-            'photo_4' => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
-            'photo_5' => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
-        ]);
+                // Photos
+                'photo_0' => 'required|image|mimes:jpeg,png,jpg|max:5120', // 5MB max
+                'photo_1' => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
+                'photo_2' => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
+                'photo_3' => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
+                'photo_4' => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
+                'photo_5' => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
+            ]);
 
-        if ($validator->fails()) {
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            // Handle photo uploads
+            $photos = [];
+            for ($i = 0; $i < 6; $i++) {
+                if ($request->hasFile("photo_$i")) {
+                    $file = $request->file("photo_$i");
+                    $filename = uniqid() . '.' . $file->getClientOriginalExtension();
+                    $path = $file->storeAs('profile-photos', $filename, 'public');
+
+                    $photos[] = [
+                        'url' => Storage::url($path),
+                        'filename' => $filename,
+                        'order' => $i,
+                        'is_primary' => $i === 0,
+                        'uploaded_at' => now()->toISOString(),
+                    ];
+                }
+            }
+
+            // Generate a unique user ID (in real app, this would come from Supabase)
+            $userId = \Illuminate\Support\Str::uuid();
+
+            // Create user in users table
+            $user = User::create([
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'first_name' => $request->firstName,
+                'last_name' => $request->lastName,
+                'date_of_birth' => $request->dateOfBirth,
+                'gender' => $request->gender,
+                'location' => $request->location,
+                'bio' => $request->bio,
+                'interests' => $request->interests,
+                'latitude' => $request->latitude,
+                'longitude' => $request->longitude,
+                'height' => $request->height,
+                'education' => $request->educationLevel,
+                'profession' => $request->occupation,
+                'relationship_type' => $request->relationshipGoals,
+            ]);
+
+            $userProfile = UserProfile::create([
+                'user_id' => $user->id,
+                'first_name' => $request->firstName,
+                'last_name' => $request->lastName,
+                'username' => $request->username,
+                'phone_number' => $request->phoneNumber,
+                'date_of_birth' => $request->dateOfBirth,
+                'gender' => $request->gender,
+                'sexual_orientation' => $request->sexualOrientation,
+                'location' => $request->location,
+                'state' => $request->state,
+                'country' => $request->country,
+                'latitude' => $request->latitude,
+                'longitude' => $request->longitude,
+                'preferred_genders' => $request->preferredGenders,
+                'preferred_age_range' => $request->preferredAgeRange,
+                'preferred_distance' => $request->preferredDistance,
+                'relationship_goals' => $request->relationshipGoals,
+                'height' => $request->height,
+                'body_type' => $request->bodyType,
+                'ethnicity' => $request->ethnicity,
+                'hair_color' => $request->hairColor,
+                'eye_color' => $request->eyeColor,
+                'education_level' => $request->educationLevel,
+                'occupation' => $request->occupation,
+                'religion' => $request->religion,
+                'drinking_habits' => $request->drinkingHabits,
+                'smoking_habits' => $request->smokingHabits,
+                'exercise_frequency' => $request->exerciseFrequency,
+                'interests' => $request->interests,
+                'bio' => $request->bio,
+                'perfect_first_date' => $request->perfectFirstDate,
+                'favorite_weekend' => $request->favoriteWeekend,
+                'surprising_fact' => $request->surprisingFact,
+                'photos' => $photos,
+                'registration_date' => now(),
+                'last_active_at' => now(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'User registered successfully',
+                'data' => [
+                    'user' => $user->load('photos', 'preferences', 'subscription'),
+                    'token' => 'mock-token-' . $user->id,
+                ]
+            ], 201);
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $validator->errors()
-            ], 422);
+                'message' => $e
+            ], 403);
         }
-
-        // Handle photo uploads
-        $photos = [];
-        for ($i = 0; $i < 6; $i++) {
-            if ($request->hasFile("photo_$i")) {
-                $file = $request->file("photo_$i");
-                $filename = uniqid() . '.' . $file->getClientOriginalExtension();
-                $path = $file->storeAs('profile-photos', $filename, 'public');
-
-                $photos[] = [
-                    'url' => Storage::url($path),
-                    'filename' => $filename,
-                    'order' => $i,
-                    'is_primary' => $i === 0,
-                    'uploaded_at' => now()->toISOString(),
-                ];
-            }
-        }
-
-        // Generate a unique user ID (in real app, this would come from Supabase)
-        $userId = \Illuminate\Support\Str::uuid();
-
-        // Create user in users table
-        $user = User::create([
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'first_name' => $request->firstName,
-            'last_name' => $request->lastName,
-            'date_of_birth' => $request->dateOfBirth,
-            'gender' => $request->gender,
-            'location' => $request->location,
-            'bio' => $request->bio,
-            'interests' => $request->interests,
-            'latitude' => $request->latitude,
-            'longitude' => $request->longitude,
-            'height' => $request->height,
-            'education' => $request->educationLevel,
-            'profession' => $request->occupation,
-            'relationship_type' => $request->relationshipGoals,
-        ]);
-
-        $userProfile = UserProfile::create([
-            'user_id' => $user->id,
-            'first_name' => $request->firstName,
-            'last_name' => $request->lastName,
-            'username' => $request->username,
-            'phone_number' => $request->phoneNumber,
-            'date_of_birth' => $request->dateOfBirth,
-            'gender' => $request->gender,
-            'sexual_orientation' => $request->sexualOrientation,
-            'location' => $request->location,
-            'state' => $request->state,
-            'country' => $request->country,
-            'latitude' => $request->latitude,
-            'longitude' => $request->longitude,
-            'preferred_genders' => $request->preferredGenders,
-            'preferred_age_range' => $request->preferredAgeRange,
-            'preferred_distance' => $request->preferredDistance,
-            'relationship_goals' => $request->relationshipGoals,
-            'height' => $request->height,
-            'body_type' => $request->bodyType,
-            'ethnicity' => $request->ethnicity,
-            'hair_color' => $request->hairColor,
-            'eye_color' => $request->eyeColor,
-            'education_level' => $request->educationLevel,
-            'occupation' => $request->occupation,
-            'religion' => $request->religion,
-            'drinking_habits' => $request->drinkingHabits,
-            'smoking_habits' => $request->smokingHabits,
-            'exercise_frequency' => $request->exerciseFrequency,
-            'interests' => $request->interests,
-            'bio' => $request->bio,
-            'perfect_first_date' => $request->perfectFirstDate,
-            'favorite_weekend' => $request->favoriteWeekend,
-            'surprising_fact' => $request->surprisingFact,
-            'photos' => $photos,
-            'registration_date' => now(),
-            'last_active_at' => now(),
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'User registered successfully',
-            'data' => [
-                'user' => $user->load('photos', 'preferences', 'subscription'),
-                'token' => 'mock-token-' . $user->id,
-            ]
-        ], 201);
     }
 
     public function login(Request $request): JsonResponse
