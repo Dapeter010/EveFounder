@@ -116,6 +116,7 @@ class DatabaseSeeder extends Seeder
             'password' => Hash::make('password123'),
             'first_name' => 'Admin',
             'last_name' => 'User',
+            'uid' => (string)\Illuminate\Support\Str::uuid(),
             'date_of_birth' => '1990-01-01',
             'gender' => 'prefer-not-to-say',
             'location' => 'London',
