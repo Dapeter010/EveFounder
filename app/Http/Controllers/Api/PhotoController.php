@@ -7,6 +7,7 @@ use App\Models\UserProfile;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
@@ -28,7 +29,7 @@ class PhotoController extends Controller
         }
 
         // In real app, get user from token
-        $user = $request->user();
+        $user = Auth::user();
 
         if (!$user) {
             return response()->json([
@@ -62,7 +63,7 @@ class PhotoController extends Controller
         // Add to user's photos array
         $currentPhotos[] = $photoData;
         $user->update(['photos' => $currentPhotos]);
-        $user->user_profile()->update(['photos' => $currentPhotos]);
+        $user->userProfile()->update(['photos' => $currentPhotos]);
 
         return response()->json([
             'success' => true,
