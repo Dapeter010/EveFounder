@@ -38,7 +38,7 @@ class PhotoController extends Controller
         }
 
         // Check if user already has 6 photos
-        $currentPhotos = $user->photos ?? [];
+        $currentPhotos = $user->user_profile->photos ?? [];
         if (count($currentPhotos) >= 6) {
             return response()->json([
                 'success' => false,
@@ -62,6 +62,7 @@ class PhotoController extends Controller
         // Add to user's photos array
         $currentPhotos[] = $photoData;
         $user->update(['photos' => $currentPhotos]);
+        $user->user_profile->update(['photos' => $currentPhotos]);
 
         return response()->json([
             'success' => true,
