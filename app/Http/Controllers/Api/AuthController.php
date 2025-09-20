@@ -72,9 +72,9 @@ class AuthController extends Controller
                 'surprisingFact' => 'required|string|min:20|max:1000',
 
                 // Photos
-                'photo_0' => 'required|image|mimes:jpeg,png,jpg|max:10120', // 5MB max
+                'photo_0' => 'required|image|mimes:jpeg,png,jpg|max:10120', // 10MB max
                 'photo_1' => 'nullable|image|mimes:jpeg,png,jpg|max:10120',
-                'photo_2' => 'nullable|image|mimes:jpeg,png,jpg|max:101200',
+                'photo_2' => 'nullable|image|mimes:jpeg,png,jpg|max:10120',
                 'photo_3' => 'nullable|image|mimes:jpeg,png,jpg|max:10120',
                 'photo_4' => 'nullable|image|mimes:jpeg,png,jpg|max:10120',
                 'photo_5' => 'nullable|image|mimes:jpeg,png,jpg|max:10120',
