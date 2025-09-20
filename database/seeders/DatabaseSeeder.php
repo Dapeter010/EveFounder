@@ -235,6 +235,7 @@ class DatabaseSeeder extends Seeder
             'user_id' => $userId,
             'first_name' => $firstName,
             'last_name' => $lastName,
+            'uid' => (string)\Illuminate\Support\Str::uuid(),
             'username' => $username,
             'phone_number' => $this->generatePhoneNumber(),
             'date_of_birth' => $dateOfBirth,

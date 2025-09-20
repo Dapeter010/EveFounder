@@ -61,8 +61,6 @@ class PhotoController extends Controller
             'is_primary' => $request->boolean('is_primary', count($currentPhotos) === 0),
             'uploaded_at' => now()->toISOString(),
         ];
-        Log::info($currentPhotos);
-        Log::info($photoData);
         // Add to user's photos array
         array_push($currentPhotos, $photoData);
 
