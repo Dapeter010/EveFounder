@@ -28,12 +28,12 @@ class PhotoController extends Controller
         }
 
         // In real app, get user from token
-        $user = UserProfile::where('username', 'demo')->first();
+        $user = $request->user();
 
         if (!$user) {
             return response()->json([
                 'success' => false,
-                'message' => 'User not found'
+                'message' => 'User not authenticated'
             ], 404);
         }
 
