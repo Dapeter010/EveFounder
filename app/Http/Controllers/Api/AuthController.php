@@ -82,7 +82,7 @@ class AuthController extends Controller
             if ($validator->fails()) {
                 return response()->json([
                     'success' => false,
-                    'message' => implode(",", $validator->errors()->all()),
+                    'message' => implode(",", $validator->errors()->all()). implode(",", $validator->failed()),
                 ], 422);
             }
 
