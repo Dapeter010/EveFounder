@@ -40,9 +40,8 @@ class PhotoController extends Controller
         }
 
         // Check if user already has 6 photos
-        Log::info($user);
-        $currentPhotos = $user->user_profile->photos ?? [];
-        Log::info($user->userProfile()->get()->photos);
+        $userProfile = UserProfile::where("user_id", $user->id)->first();
+        $currentPhotos = $userProfile->photos ?? [];
         if (count($currentPhotos) >= 6) {
             return response()->json([
                 'success' => false,
@@ -68,7 +67,7 @@ class PhotoController extends Controller
         array_push($currentPhotos, $photoData);
 
 //        $currentPhotos[] = $photoData;
-        $user->update(['photos' => $currentPhotos]);
+//        $user->update(['photos' => $currentPhotos]);
         $user->userProfile()->update(['photos' => $currentPhotos]);
 
         return response()->json([
