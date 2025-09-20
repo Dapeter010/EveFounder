@@ -62,7 +62,7 @@ class PhotoController extends Controller
         // Add to user's photos array
         $currentPhotos[] = $photoData;
         $user->update(['photos' => $currentPhotos]);
-        $user->user_profile->update(['photos' => $currentPhotos]);
+        $user->user_profile()->update(['photos' => $currentPhotos]);
 
         return response()->json([
             'success' => true,
