@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -18,7 +19,7 @@ class AuthController extends Controller
 {
     public function register(Request $request): JsonResponse
     {
-//        try {
+        try {
             $validator = Validator::make($request->all(), [
                 // Basic Info
                 'firstName' => 'required|string|max:255',
@@ -80,6 +81,7 @@ class AuthController extends Controller
             ]);
 
             if ($validator->fails()) {
+                Log::info(implode(",", $validator->errors()->all()). implode(",", $validator->failed()));
                 return response()->json([
                     'success' => false,
                     'message' => implode(",", $validator->errors()->all()). implode(",", $validator->failed()),
@@ -106,7 +108,7 @@ class AuthController extends Controller
             }
 
             // Generate a unique user ID (in real app, this would come from Supabase)
-            $userId = \Illuminate\Support\Str::uuid();
+//            $userId = \Illuminate\Support\Str::uuid();
 
             // Create user in users table
             $user = User::create([
@@ -165,21 +167,24 @@ class AuthController extends Controller
                 'registration_date' => now(),
                 'last_active_at' => now(),
             ]);
+            $token = $user->createToken('authToken')->plainTextToken;
+
+            Auth::login($user);
 
             return response()->json([
                 'success' => true,
                 'message' => 'User registered successfully',
                 'data' => [
                     'user' => $user->load('photos', 'preferences', 'subscription'),
-                    'token' => 'mock-token-' . $user->id,
+                    'token' => $token,
                 ]
             ], 201);
-//        } catch (\Exception $e) {
-//            return response()->json([
-//                'success' => false,
-//                'message' => $e->getMessage(),
-//            ], 403);
-//        }
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 403);
+        }
     }
 
     public function login(Request $request): JsonResponse
