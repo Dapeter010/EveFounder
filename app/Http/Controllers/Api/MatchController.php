@@ -40,7 +40,7 @@ class MatchController extends Controller
                 $otherUserId = $match->user1_id === $user->id ? $match->user2_id : $match->user1_id;
 
                 // Load the other user with their photos
-                $otherUser = User::with(['photos' => function($query) {
+                $otherUser = User::with(['photos' => function ($query) {
                     $query->orderBy('order', 'asc');
                 }])->find($otherUserId);
 
@@ -64,10 +64,10 @@ class MatchController extends Controller
                     $latDiff = deg2rad($otherUser->latitude - $user->latitude);
                     $lonDiff = deg2rad($otherUser->longitude - $user->longitude);
 
-                    $a = sin($latDiff/2) * sin($latDiff/2) +
+                    $a = sin($latDiff / 2) * sin($latDiff / 2) +
                         cos(deg2rad($user->latitude)) * cos(deg2rad($otherUser->latitude)) *
-                        sin($lonDiff/2) * sin($lonDiff/2);
-                    $c = 2 * atan2(sqrt($a), sqrt(1-$a));
+                        sin($lonDiff / 2) * sin($lonDiff / 2);
+                    $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
                     $distanceKm = $earthRadius * $c;
 
                     $distance = round($distanceKm * 0.621371, 1) . ' miles away'; // Convert to miles
@@ -85,10 +85,10 @@ class MatchController extends Controller
 
                 // Check if this match came from a super like
                 $superLike = DB::table('likes')
-                    ->where(function($query) use ($user, $otherUserId) {
+                    ->where(function ($query) use ($user, $otherUserId) {
                         $query->where('liker_id', $user->id)->where('liked_id', $otherUserId);
                     })
-                    ->orWhere(function($query) use ($user, $otherUserId) {
+                    ->orWhere(function ($query) use ($user, $otherUserId) {
                         $query->where('liker_id', $otherUserId)->where('liked_id', $user->id);
                     })
                     ->where('is_super_like', true)
@@ -140,11 +140,19 @@ class MatchController extends Controller
 
         $likes = Like::where('liked_id', $user->id)
             ->where('status', 'pending')
-            ->with(['liker' => function ($query) {
-                $query->select('user_id', 'first_name', 'last_name', 'photos');
-            }])
+            ->with([
+                'liker.user_profile.photos', // Load the photos through the relationship chain
+                'liker' => function ($query) {
+                    $query->select('user_id', 'first_name', 'last_name', 'date_of_birth', 'location');
+                }])
             ->orderBy('created_at', 'desc')
             ->get();
+
+        $likes->transform(function ($like) {
+            $like->liker->photos = $like->liker->user_profile->photos ?? [];
+            $like->age = \Carbon\Carbon::parse($like->liker->date_of_birth)->age;
+            return $like;
+        });
 
         return response()->json([
             'success' => true,
@@ -164,11 +172,21 @@ class MatchController extends Controller
         }
 
         $likes = Like::where('liker_id', $user->id)
-            ->with(['liked' => function ($query) {
-                $query->select('user_id', 'first_name', 'last_name', 'photos');
-            }])
+            ->with([
+                'liked.user_profile.photos', // Load the photos through the relationship chain
+                'liked' => function ($query) {
+                    $query->select('user_id', 'first_name', 'last_name', 'date_of_birth', 'location');
+                }
+            ])
             ->orderBy('created_at', 'desc')
             ->get();
+
+        $likes->transform(function ($like) {
+            $like->liked->photos = $like->liked->user_profile->photos ?? [];
+            $like->age = \Carbon\Carbon::parse($like->liked->date_of_birth)->age;
+            return $like;
+        });
+
 
         return response()->json([
             'success' => true,
