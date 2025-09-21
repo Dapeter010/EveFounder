@@ -141,15 +141,13 @@ class MatchController extends Controller
         $likes = Like::where('liked_id', $user->id)
             ->where('status', 'pending')
             ->with([
-                'liker.user_profile.photos', // Load the photos through the relationship chain
                 'liker' => function ($query) {
-                    $query->select('user_id', 'first_name', 'last_name', 'date_of_birth', 'location');
+                    $query->select('user_id', 'first_name', 'last_name', 'date_of_birth', 'location', 'photos');
                 }])
             ->orderBy('created_at', 'desc')
             ->get();
 
         $likes->transform(function ($like) {
-            $like->liker->photos = $like->liker->user_profile->photos ?? [];
             $like->age = \Carbon\Carbon::parse($like->liker->date_of_birth)->age;
             return $like;
         });
@@ -175,14 +173,13 @@ class MatchController extends Controller
             ->with([
                 'liked.user_profile.photos', // Load the photos through the relationship chain
                 'liked' => function ($query) {
-                    $query->select('user_id', 'first_name', 'last_name', 'date_of_birth', 'location');
+                    $query->select('user_id', 'first_name', 'last_name', 'date_of_birth', 'location', 'photos');
                 }
             ])
             ->orderBy('created_at', 'desc')
             ->get();
 
         $likes->transform(function ($like) {
-            $like->liked->photos = $like->liked->user_profile->photos ?? [];
             $like->age = \Carbon\Carbon::parse($like->liked->date_of_birth)->age;
             return $like;
         });
