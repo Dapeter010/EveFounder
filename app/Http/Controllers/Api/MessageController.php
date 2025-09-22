@@ -6,10 +6,12 @@ use App\Models\User;
 use App\Models\UserProfile;
 use App\Models\Message;
 use App\Models\Matcher;
+use App\Events\MessageSent;  // ADD THIS IMPORT
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
 
@@ -220,6 +222,17 @@ class MessageController extends Controller
             'type' => $request->type ?? 'text',
             'is_deleted' => false,
         ]);
+
+        // Load the message with sender relationship for broadcasting
+        $message->load('sender');
+
+        // BROADCAST THE MESSAGE USING REVERB
+        try {
+            broadcast(new MessageSent($message, $user));
+        } catch (\Exception $e) {
+            // Log the broadcasting error but don't fail the message sending
+            Log::error('Failed to broadcast message: ' . $e->getMessage());
+        }
 
         return response()->json([
             'success' => true,

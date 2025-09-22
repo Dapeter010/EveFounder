@@ -19,7 +19,14 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['*'],
+// IMPORTANT: Update with your production domains
+    'allowed_origins' => [
+        'https://evefound.com',
+        'https://www.evefound.com',
+        'https://server.evefound.com',
+        'https://www.server.evefound.com',
+        'http://localhost:3000', // Keep for local development
+    ],
 
     'allowed_origins_patterns' => [],
 

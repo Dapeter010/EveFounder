@@ -17,25 +17,60 @@ class Message extends Model
         'content',
         'type',
         'read_at',
-        'is_deleted',
+        'is_deleted'
     ];
 
     protected $casts = [
         'read_at' => 'datetime',
-        'is_deleted' => 'boolean',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'is_deleted' => 'boolean'
     ];
 
 
-    public function sender(): BelongsTo
+    /**
+     * Get the match that this message belongs to
+     */
+    public function match()
+    {
+        return $this->belongsTo(Matcher::class);
+    }
+
+    /**
+     * Get the user who sent this message
+     */
+    public function sender()
     {
         return $this->belongsTo(UserProfile::class, 'sender_id', 'user_id');
     }
 
-    public function receiver(): BelongsTo
+    /**
+     * Get the user who received this message
+     */
+    public function receiver()
     {
         return $this->belongsTo(UserProfile::class, 'receiver_id', 'user_id');
     }
 
+    /**
+     * Scope to get only non-deleted messages
+     */
+    public function scopeNotDeleted($query)
+    {
+        return $query->where('is_deleted', false);
+    }
+
+    /**
+     * Scope to get unread messages
+     */
+    public function scopeUnread($query)
+    {
+        return $query->whereNull('read_at');
+    }
+
+    /**
+     * Check if message is read
+     */
     public function isRead(): bool
     {
         return $this->read_at !== null;
