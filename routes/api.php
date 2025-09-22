@@ -124,6 +124,8 @@ Route::group(['middleware' => ['auth:sanctum']], function () {
 Route::post('/webhooks/stripe', [BoostController::class, 'handleWebhook'])
     ->middleware(['verify.supabase.webhook']);
 
-
-Route::post('/push/subscribe', [PushController::class, 'subscribe']);
-Route::post('/push/unsubscribe', [PushController::class, 'unsubscribe']);
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/broadcasting/auth', function (Request $request) {
+        return response()->json(['auth' => true]);
+    });
+});
