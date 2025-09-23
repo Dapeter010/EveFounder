@@ -81,10 +81,10 @@ class AuthController extends Controller
             ]);
 
             if ($validator->fails()) {
-                Log::info(implode(",", $validator->errors()->all()). implode(",", $validator->failed()));
+                Log::info(implode(",", $validator->errors()->all()) . implode(",", $validator->failed()));
                 return response()->json([
                     'success' => false,
-                    'message' => implode(",", $validator->errors()->all()). implode(",", $validator->failed()),
+                    'message' => implode(",", $validator->errors()->all()) . implode(",", $validator->failed()),
                 ], 422);
             }
 
@@ -342,6 +342,38 @@ class AuthController extends Controller
             'success' => true,
             'message' => 'Profile updated successfully',
             'data' => $user->fresh()->load('photos', 'preferences', 'subscription')
+        ]);
+    }
+
+
+    public function authReverb(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $channelName = $request->input('channel_name');
+        $socketId = $request->input('socket_id');
+
+        // Verify user can access this private channel
+        if (str_starts_with($channelName, 'private-user.')) {
+            $userId = str_replace('private-user.', '', $channelName);
+            if ((int)$userId !== (int)$user->id) {
+                return response()->json(['message' => 'Forbidden'], 403);
+            }
+        }
+
+        // Generate Pusher auth signature
+        $appKey = config('reverb.apps.apps.0.key');
+        $appSecret = config('reverb.apps.apps.0.secret');
+
+        $stringToSign = $socketId . ':' . $channelName;
+        $signature = hash_hmac('sha256', $stringToSign, $appSecret);
+
+        return response()->json([
+            'auth' => $appKey . ':' . $signature
         ]);
     }
 }

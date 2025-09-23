@@ -126,7 +126,5 @@ Route::post('/webhooks/stripe', [BoostController::class, 'handleWebhook'])
     ->middleware(['verify.supabase.webhook']);
 
 Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/broadcasting/auth', function (Request $request) {
-        return response()->json(['auth' => true]);
-    });
+    Route::post('/broadcasting/auth', [AuthController::class, 'authReverb']);
 });
