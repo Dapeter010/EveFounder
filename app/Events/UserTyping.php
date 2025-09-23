@@ -40,8 +40,8 @@ class UserTyping implements ShouldBroadcast
     public function broadcastWith(): array
     {
         return [
-            'match_id' => $this->matchId,
-            'user_id' => $this->userId,
+            'match_id' => (string) $this->matchId,
+            'user_id' => (int) $this->userId,
         ];
     }
 }
