@@ -389,4 +389,49 @@ class MessageController extends Controller
             ]
         ]);
     }
+
+    public function sendTypingIndicator(Request $request, $matchId): JsonResponse
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not authenticated'
+            ], 401);
+        }
+
+        // Verify user is part of this match
+        $match = DB::table('matches')
+            ->where('id', $matchId)
+            ->where(function ($query) use ($user) {
+                $query->where('user1_id', $user->id)
+                    ->orWhere('user2_id', $user->id);
+            })
+            ->where('is_active', true)
+            ->first();
+
+        if (!$match) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Match not found or access denied'
+            ], 404);
+        }
+
+        // Determine receiver ID
+        $receiverId = $match->user1_id === $user->id ? $match->user2_id : $match->user1_id;
+
+        // Broadcast typing indicator (temporary event, doesn't save to database)
+        try {
+            broadcast(new \App\Events\UserTyping($matchId, $user->id, $receiverId));
+        } catch (\Exception $e) {
+            Log::error('Failed to broadcast typing indicator: ' . $e->getMessage());
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Typing indicator sent'
+        ]);
+    }
+
 }

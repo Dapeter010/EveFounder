@@ -60,6 +60,7 @@ Route::group(['middleware' => ['auth:sanctum']], function () {
     Route::put('/messages/{messageId}/read', [MessageController::class, 'markAsRead']);
     Route::delete('/messages/{messageId}', [MessageController::class, 'deleteMessage']);
     Route::get('/conversations/{matchId}/info', [MessageController::class, 'getConversationInfo']);
+    Route::post('/conversations/{matchId}/typing', [MessageController::class, 'sendTypingIndicator']);
 
     // Photo management
     Route::post('/photos', [PhotoController::class, 'store']);
