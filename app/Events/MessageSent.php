@@ -1,17 +1,17 @@
 <?php
+// app/Events/MessageSent.php
 
 namespace App\Events;
 
 use App\Models\Message;
 use App\Models\User;
+use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
-
-//use Illuminate\Broadcasting\PresenceChannel;
-//use Illuminate\Broadcasting\Channel;
 
 class MessageSent implements ShouldBroadcast
 {
@@ -20,9 +20,6 @@ class MessageSent implements ShouldBroadcast
     public $message;
     public $sender;
 
-    /**
-     * Create a new event instance.
-     */
     public function __construct(Message $message, User $sender)
     {
         $this->message = $message;
@@ -31,38 +28,43 @@ class MessageSent implements ShouldBroadcast
 
     /**
      * Get the channels the event should broadcast on.
-     *
-     * @return PrivateChannel
      */
-    public function broadcastOn(): PrivateChannel
+    public function broadcastOn(): array
     {
-        return new PrivateChannel('match.' . $this->message->match_id);
-
+        return [
+            new PrivateChannel('user.' . $this->message->receiver_id),
+            new PrivateChannel('user.' . $this->message->sender_id),
+        ];
     }
 
-    public function broadcastWith()
+    /**
+     * The event's broadcast name.
+     */
+    public function broadcastAs(): string
+    {
+        return 'message.sent';
+    }
+
+    /**
+     * Get the data to broadcast.
+     */
+    public function broadcastWith(): array
     {
         return [
             'message' => [
                 'id' => $this->message->id,
-                'content' => $this->message->content,
-                'sender_id' => $this->message->sender_id,
                 'match_id' => $this->message->match_id,
+                'sender_id' => $this->message->sender_id,
+                'receiver_id' => $this->message->receiver_id,
+                'content' => $this->message->content,
                 'type' => $this->message->type,
                 'created_at' => $this->message->created_at->toISOString(),
-                'read_at' => $this->message->read_at?->toISOString(),
             ],
             'sender' => [
                 'id' => $this->sender->id,
-                'name' => $this->sender->first_name,
-                'avatar' => $this->sender->photos->first()?->photo_url,
+                'first_name' => $this->sender->first_name,
+                'last_name' => $this->sender->last_name,
             ],
-            'type' => 'new_message',
         ];
-    }
-
-    public function broadcastAs()
-    {
-        return 'message.sent';
     }
 }
