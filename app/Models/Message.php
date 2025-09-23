@@ -41,7 +41,8 @@ class Message extends Model
      */
     public function sender()
     {
-        return $this->belongsTo(UserProfile::class, 'sender_id', 'user_id');
+//        return $this->belongsTo(UserProfile::class, 'sender_id', 'user_id');
+        return $this->belongsTo(User::class, 'sender_id');
     }
 
     /**
@@ -49,7 +50,8 @@ class Message extends Model
      */
     public function receiver()
     {
-        return $this->belongsTo(UserProfile::class, 'receiver_id', 'user_id');
+        return $this->belongsTo(User::class, 'receiver_id');
+//        return $this->belongsTo(UserProfile::class, 'receiver_id', 'user_id');
     }
 
     /**

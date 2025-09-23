@@ -6,7 +6,9 @@ use App\Models\User;
 use App\Models\UserProfile;
 use App\Models\Message;
 use App\Models\Matcher;
-use App\Events\MessageSent;  // ADD THIS IMPORT
+use App\Events\MessageSent;
+
+// ADD THIS IMPORT
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
@@ -31,7 +33,7 @@ class MessageController extends Controller
         $conversations = DB::table('matches')
             ->where(function ($query) use ($user) {
                 $query->where('user1_id', $user->id)
-                      ->orWhere('user2_id', $user->id);
+                    ->orWhere('user2_id', $user->id);
             })
             ->where('is_active', true)
             ->orderBy('matched_at', 'desc')
@@ -41,7 +43,7 @@ class MessageController extends Controller
                 $otherUserId = $match->user1_id === $user->id ? $match->user2_id : $match->user1_id;
 
                 // Load the other user with photos
-                $otherUser = User::with(['photos' => function($query) {
+                $otherUser = User::with(['photos' => function ($query) {
                     $query->orderBy('order', 'asc');
                 }])->find($otherUserId);
 
@@ -69,7 +71,7 @@ class MessageController extends Controller
 
                 // Check if user is online (last active within 15 minutes)
                 $isOnline = $otherUser->last_active_at &&
-                           Carbon::parse($otherUser->last_active_at)->gt(Carbon::now()->subMinutes(15));
+                    Carbon::parse($otherUser->last_active_at)->gt(Carbon::now()->subMinutes(15));
 
                 return [
                     'id' => $match->id,
@@ -81,7 +83,7 @@ class MessageController extends Controller
                         'age' => $age,
                         'date_of_birth' => $otherUser->date_of_birth,
                         'is_online' => $isOnline,
-                        'photos' => $otherUser->photos->map(function($photo) {
+                        'photos' => $otherUser->photos->map(function ($photo) {
                             return [
                                 'id' => $photo->id,
                                 'photo_url' => $photo->photo_url,
@@ -132,7 +134,7 @@ class MessageController extends Controller
             ->where('id', $matchId)
             ->where(function ($query) use ($user) {
                 $query->where('user1_id', $user->id)
-                      ->orWhere('user2_id', $user->id);
+                    ->orWhere('user2_id', $user->id);
             })
             ->where('is_active', true)
             ->first();
@@ -198,7 +200,7 @@ class MessageController extends Controller
             ->where('id', $matchId)
             ->where(function ($query) use ($user) {
                 $query->where('user1_id', $user->id)
-                      ->orWhere('user2_id', $user->id);
+                    ->orWhere('user2_id', $user->id);
             })
             ->where('is_active', true)
             ->first();
@@ -225,13 +227,22 @@ class MessageController extends Controller
 
         // Load the message with sender relationship for broadcasting
         $message->load('sender');
+        Log::info('About to broadcast MessageSent event', [
+            'message_id' => $message->id,
+            'sender_id' => $user->id,
+            'receiver_id' => $receiverId,
+            'match_id' => $matchId
+        ]);
 
         // BROADCAST THE MESSAGE USING REVERB
         try {
             broadcast(new MessageSent($message, $user));
+            Log::info('MessageSent event broadcast successfully');
         } catch (\Exception $e) {
             // Log the broadcasting error but don't fail the message sending
-            Log::error('Failed to broadcast message: ' . $e->getMessage());
+            Log::error('Failed to broadcast message: ' . $e->getMessage(), [
+                'exception' => $e->getTraceAsString()
+            ]);
         }
 
         return response()->json([
@@ -337,7 +348,7 @@ class MessageController extends Controller
             ->where('id', $matchId)
             ->where(function ($query) use ($user) {
                 $query->where('user1_id', $user->id)
-                      ->orWhere('user2_id', $user->id);
+                    ->orWhere('user2_id', $user->id);
             })
             ->where('is_active', true)
             ->first();
@@ -381,7 +392,7 @@ class MessageController extends Controller
                     'location' => $otherUser->location,
                     'bio' => $otherUser->bio,
                     'photos' => $photos,
-                    'interests' => $otherUser->interests ? $otherUser->interests: [],
+                    'interests' => $otherUser->interests ? $otherUser->interests : [],
                     'profession' => $otherUser->profession,
                     'education' => $otherUser->education,
                 ],
