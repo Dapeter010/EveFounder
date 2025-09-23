@@ -33,7 +33,7 @@ class MessageSent implements ShouldBroadcast
     {
         return [
             new PrivateChannel('user.' . $this->message->receiver_id),
-            new PrivateChannel('user.' . $this->message->sender_id),
+//            new PrivateChannel('user.' . $this->message->sender_id), //no need to broadcast back to sender
         ];
     }
 
