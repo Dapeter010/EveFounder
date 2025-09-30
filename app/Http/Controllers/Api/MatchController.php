@@ -138,7 +138,19 @@ class MatchController extends Controller
             ], 404);
         }
 
-        //@todo: only if i am premium will i be able to see photos of who liked me should i be able to like them back ??
+        // Check subscription - "See Who Liked You" requires Basic or Premium
+        $subscription = $user->subscription;
+        $hasAccess = $subscription && ($subscription->isPremium() || $subscription->isBasic());
+
+        if (!$hasAccess) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Upgrade to Basic or Premium to see who liked you',
+                'requires_upgrade' => true,
+                'feature' => 'see_who_liked_you'
+            ], 403);
+        }
+
         $likes = Like::where('liked_id', $user->id)
             ->where('status', 'pending')
             ->with([

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/qwerty/www/Personal/evefound/app/boost/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

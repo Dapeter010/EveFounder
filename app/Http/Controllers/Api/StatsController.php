@@ -27,7 +27,28 @@ class StatsController extends Controller
                 'message' => 'User not found'
             ], 404);
         }
-        Log::info("id is " . $user->id);
+
+        // Get subscription information
+        $subscription = $user->subscription;
+        $isPremium = $subscription && $subscription->isPremium();
+        $isBasic = $subscription && $subscription->isBasic();
+        $isFree = !$isPremium && !$isBasic;
+
+        // Calculate daily usage
+        $todayLikes = Like::where('liker_id', $user->id)
+            ->where('is_super_like', false)
+            ->whereDate('created_at', today())
+            ->count();
+
+        $todaySuperLikes = Like::where('liker_id', $user->id)
+            ->where('is_super_like', true)
+            ->whereDate('created_at', today())
+            ->count();
+
+        // Determine limits based on subscription
+        $dailyLikeLimit = $isFree ? 10 : null; // null means unlimited
+        $superLikeLimit = $isFree ? 1 : ($isBasic ? 5 : null);
+
         $stats = [
             'profile_views_today' => ProfileView::where('viewed_id', $user->id)
                 ->whereDate('viewed_at', today())
@@ -45,6 +66,30 @@ class StatsController extends Controller
             'unread_messages' => Message::where('receiver_id', $user->id)
                 ->whereNull('read_at')
                 ->count(),
+
+            // Subscription and limits info
+            'subscription' => [
+                'plan' => $isPremium ? 'premium' : ($isBasic ? 'basic' : 'free'),
+                'is_premium' => $isPremium,
+                'is_basic' => $isBasic,
+                'is_free' => $isFree,
+            ],
+            'daily_limits' => [
+                'likes_used' => $todayLikes,
+                'likes_limit' => $dailyLikeLimit,
+                'likes_remaining' => $dailyLikeLimit ? max(0, $dailyLikeLimit - $todayLikes) : null,
+                'super_likes_used' => $todaySuperLikes,
+                'super_likes_limit' => $superLikeLimit,
+                'super_likes_remaining' => $superLikeLimit ? max(0, $superLikeLimit - $todaySuperLikes) : null,
+            ],
+            'features' => [
+                'unlimited_likes' => !$isFree,
+                'see_who_liked_you' => !$isFree,
+                'advanced_filters' => $isPremium,
+                'read_receipts' => $isPremium,
+                'monthly_boost' => $isPremium,
+                'priority_support' => $isPremium,
+            ]
         ];
 
         return response()->json([

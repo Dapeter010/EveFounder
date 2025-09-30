@@ -44,6 +44,8 @@ class SubscriptionController extends Controller
                 'status' => $subscription->status,
                 'amount' => $subscription->amount,
                 'currency' => $subscription->currency,
+                'price_id' => $subscription->price_id,
+                'next_billing' => $subscription->ends_at,
                 'starts_at' => $subscription->starts_at,
                 'ends_at' => $subscription->ends_at,
                 'stripe_subscription_id' => $subscription->stripe_subscription_id,

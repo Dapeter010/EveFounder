@@ -79,32 +79,72 @@ class DiscoveryController extends Controller
         ->having('distance', '<=', $maxDistance);
     }
 
-    // Filters using UserProfile fields
+    // Advanced Filters - Premium Only
+    // Check if user has Premium subscription for advanced filters
+    $subscription = $user->subscription;
+    $isPremium = $subscription && $subscription->isPremium();
+
+    // These are ADVANCED filters - only available to Premium users
     if ($request->has('education') && $request->education && $request->education !== 'any') {
+        if (!$isPremium) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Education filter requires Premium subscription',
+                'requires_premium' => true
+            ], 403);
+        }
         $query->whereHas('userProfile', function ($q) use ($request) {
             $q->where('education_level', $request->education);
         });
     }
 
     if ($request->has('profession') && $request->profession && $request->profession !== 'any') {
+        if (!$isPremium) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Profession filter requires Premium subscription',
+                'requires_premium' => true
+            ], 403);
+        }
         $query->whereHas('userProfile', function ($q) use ($request) {
             $q->where('occupation', $request->profession);
         });
     }
 
     if ($request->has('min_height') && $request->min_height) {
+        if (!$isPremium) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Height filter requires Premium subscription',
+                'requires_premium' => true
+            ], 403);
+        }
         $query->whereHas('userProfile', function ($q) use ($request) {
             $q->where('height', '>=', $request->min_height);
         });
     }
 
     if ($request->has('max_height') && $request->max_height) {
+        if (!$isPremium) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Height filter requires Premium subscription',
+                'requires_premium' => true
+            ], 403);
+        }
         $query->whereHas('userProfile', function ($q) use ($request) {
             $q->where('height', '<=', $request->max_height);
         });
     }
 
     if ($request->has('relationship_type') && $request->relationship_type && $request->relationship_type !== 'any') {
+        if (!$isPremium) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Relationship type filter requires Premium subscription',
+                'requires_premium' => true
+            ], 403);
+        }
         $query->whereHas('userProfile', function ($q) use ($request) {
             $q->where('relationship_goals', $request->relationship_type);
         });
@@ -117,7 +157,18 @@ class DiscoveryController extends Controller
 
     $totalCount = $query->count();
 
-    $users = $query->orderBy('last_active_at', 'desc')
+    // Boost visibility - boosted profiles appear first
+    // Get users with active boosts
+    $boostedUserIds = \App\Models\ProfileBoost::where('status', 'active')
+        ->where('ends_at', '>', now())
+        ->pluck('user_id')
+        ->toArray();
+
+    // Order by boost status first, then by last active
+    $users = $query->orderByRaw(
+        'CASE WHEN id IN (' . implode(',', array_merge($boostedUserIds, [0])) . ') THEN 0 ELSE 1 END'
+    )
+        ->orderBy('last_active_at', 'desc')
         ->offset($offset)
         ->limit($perPage)
         ->get();
@@ -216,6 +267,57 @@ class DiscoveryController extends Controller
         }
 
         $isSuperLike = $request->input('is_super_like', false);
+        $subscription = $user->subscription;
+
+        // Check subscription and enforce limits
+        $isPremium = $subscription && $subscription->isPremium();
+        $isBasic = $subscription && $subscription->isBasic();
+        $isFree = !$isPremium && !$isBasic;
+
+        // Daily like limit check for FREE users
+        if ($isFree && !$isSuperLike) {
+            $todayLikes = Like::where('liker_id', $user->id)
+                ->where('is_super_like', false)
+                ->whereDate('created_at', today())
+                ->count();
+
+            if ($todayLikes >= 10) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Daily like limit reached (10/day). Upgrade to Premium for unlimited likes.',
+                    'requires_upgrade' => true,
+                    'limit_reached' => true
+                ], 403);
+            }
+        }
+
+        // Super Like limit check
+        if ($isSuperLike) {
+            $todaySuperLikes = Like::where('liker_id', $user->id)
+                ->where('is_super_like', true)
+                ->whereDate('created_at', today())
+                ->count();
+
+            if ($isFree && $todaySuperLikes >= 1) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Daily super like limit reached (1/day). Upgrade to Basic for 5/day or Premium for unlimited.',
+                    'requires_upgrade' => true,
+                    'limit_reached' => true
+                ], 403);
+            }
+
+            if ($isBasic && $todaySuperLikes >= 5) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Daily super like limit reached (5/day). Upgrade to Premium for unlimited super likes.',
+                    'requires_upgrade' => true,
+                    'limit_reached' => true
+                ], 403);
+            }
+
+            // Premium users have unlimited super likes
+        }
 
         // Create like
         $like = Like::create([

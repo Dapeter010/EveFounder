@@ -16,6 +16,7 @@ class Subscription extends Model
         'status',
         'amount',
         'currency',
+        'price_id',
         'stripe_subscription_id',
         'starts_at',
         'ends_at',
@@ -47,5 +48,32 @@ class Subscription extends Model
     public function daysRemaining(): int
     {
         return max(0, $this->ends_at->diffInDays(now()));
+    }
+
+    public function isPremium(): bool
+    {
+        if (!$this->isActive()) {
+            return false;
+        }
+
+        // Check if price_id matches Premium plan
+        $premiumPriceId = 'price_1RvJUZGhlS5RvknCyv6vX6lT';
+        return $this->price_id === $premiumPriceId;
+    }
+
+    public function isBasic(): bool
+    {
+        if (!$this->isActive()) {
+            return false;
+        }
+
+        // Check if price_id matches Basic plan
+        $basicPriceId = 'price_1RvJSxGhlS5RvknCWKGwanha';
+        return $this->price_id === $basicPriceId;
+    }
+
+    public function isFree(): bool
+    {
+        return !$this->isActive() || (!$this->isPremium() && !$this->isBasic());
     }
 }
