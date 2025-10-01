@@ -85,7 +85,6 @@ class AuthController extends Controller
             ]);
 
             if ($validator->fails()) {
-                Log::info(implode(",", $validator->errors()->all()) . implode(",", $validator->failed()));
                 return response()->json([
                     'success' => false,
                     'message' => implode(",", $validator->errors()->all()) . implode(",", $validator->failed()),
