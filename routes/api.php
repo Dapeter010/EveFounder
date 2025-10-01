@@ -14,7 +14,6 @@ use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\StatsController;
 use App\Http\Controllers\Api\VerificationController;
 use App\Http\Controllers\Api\SubscriptionController;
-use App\Http\Controllers\Api\NotificationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -104,12 +103,6 @@ Route::group(['middleware' => ['auth:sanctum']], function () {
     // Profile stats
     Route::get('/stats', [StatsController::class, 'getUserStats']);
     Route::post('/location/update', [StatsController::class, 'updateLocation']);
-
-    // Push Notifications
-    Route::post('/notifications/subscribe', [NotificationController::class, 'subscribe']);
-    Route::post('/notifications/unsubscribe', [NotificationController::class, 'unsubscribe']);
-    Route::get('/notifications/subscriptions', [NotificationController::class, 'getSubscriptions']);
-    Route::post('/notifications/test', [NotificationController::class, 'sendTestNotification']);
 
     // Admin routes
     Route::prefix('admin')->group(function () { // In real app: add admin middleware
