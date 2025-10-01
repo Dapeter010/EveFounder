@@ -287,7 +287,7 @@ class DiscoveryController extends Controller
                     'message' => 'Daily like limit reached (10/day). Upgrade to Premium for unlimited likes.',
                     'requires_upgrade' => true,
                     'limit_reached' => true
-                ], 403);
+                ]);
             }
         }
 
@@ -304,7 +304,7 @@ class DiscoveryController extends Controller
                     'message' => 'Daily super like limit reached (1/day). Upgrade to Basic for 5/day or Premium for unlimited.',
                     'requires_upgrade' => true,
                     'limit_reached' => true
-                ], 403);
+                ]);
             }
 
             if ($isBasic && $todaySuperLikes >= 5) {
@@ -313,7 +313,7 @@ class DiscoveryController extends Controller
                     'message' => 'Daily super like limit reached (5/day). Upgrade to Premium for unlimited super likes.',
                     'requires_upgrade' => true,
                     'limit_reached' => true
-                ], 403);
+                ]);
             }
 
             // Premium users have unlimited super likes

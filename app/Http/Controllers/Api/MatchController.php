@@ -148,7 +148,7 @@ class MatchController extends Controller
                 'message' => 'Upgrade to Basic or Premium to see who liked you',
                 'requires_upgrade' => true,
                 'feature' => 'see_who_liked_you'
-            ], 403);
+            ]);
         }
 
         $likes = Like::where('liked_id', $user->id)
