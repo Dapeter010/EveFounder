@@ -62,7 +62,8 @@ class SubscriptionController extends Controller
             'price_id' => 'required|string',
             'success_url' => 'required|url',
             'cancel_url' => 'required|url',
-            'mode' => 'required|in:payment,subscription'
+            'mode' => 'required|in:payment,subscription',
+            'metadata' => 'sometimes|array' // Accept but ignore - we build our own from auth user
         ]);
 
         if ($validator->fails()) {

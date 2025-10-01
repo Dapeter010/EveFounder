@@ -123,7 +123,8 @@ class BoostController extends Controller
         $validator = Validator::make($request->all(), [
             'boost_id' => 'required|in:profile,super,weekend',
             'success_url' => 'required|url',
-            'cancel_url' => 'required|url'
+            'cancel_url' => 'required|url',
+            'metadata' => 'sometimes|array' // Accept but ignore - we build our own from auth user
         ]);
 
         if ($validator->fails()) {
