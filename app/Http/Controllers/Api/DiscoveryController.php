@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 //use App\Http\Controllers\Controller;
 use App\Models\Like;
 use App\Models\User;
+use App\Events\NewMatchNotification;
+use App\Events\NewLikeNotification;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -350,6 +352,31 @@ class DiscoveryController extends Controller
                 ->update(['status' => 'matched']);
 
             $isMatch = true;
+
+            // Broadcast match notifications to both users
+            try {
+                $targetUser = User::find($targetUserId);
+                if ($targetUser) {
+                    // Notify current user
+                    broadcast(new NewMatchNotification($user, $targetUser));
+                    // Notify target user
+                    broadcast(new NewMatchNotification($targetUser, $user));
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to broadcast match notification: ' . $e->getMessage());
+            }
+        }
+
+        // Broadcast notification to target user about new like (even if not a match yet)
+        if (!$isMatch) {
+            try {
+                $targetUser = User::find($targetUserId);
+                if ($targetUser) {
+                    broadcast(new NewLikeNotification($targetUser));
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to broadcast like notification: ' . $e->getMessage());
+            }
         }
 
         return response()->json([

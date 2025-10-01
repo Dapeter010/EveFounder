@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Read(//Users/qwerty/www/Personal/evefound/app/boost/**)"
+      "Read(//Users/qwerty/www/Personal/evefound/app/boost/**)",
+      "Bash(php artisan make:migration:*)",
+      "Bash(php artisan make:controller:*)",
+      "Bash(php artisan make:model:*)",
+      "Bash(php artisan make:event:*)",
+      "Read(//Users/qwerty/www/Personal/evefound/**)"
     ],
     "deny": [],
     "ask": []

@@ -13,6 +13,10 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 
 
 class AuthController extends Controller
@@ -345,6 +349,180 @@ class AuthController extends Controller
         ]);
     }
 
+
+    public function sendEmailVerificationCode(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => implode(", ", $validator->errors()->all()),
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $email = $request->email;
+
+        // Check if email already exists
+        if (User::where('email', $email)->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This email is already registered. Please login instead.',
+                'errors' => [
+                    'email' => ['Email already exists']
+                ]
+            ], 422);
+        }
+
+        // Rate limiting - max 1 request per 60 seconds per email
+        $rateLimitKey = 'email_verification_send:' . $email;
+        if (RateLimiter::tooManyAttempts($rateLimitKey, 1)) {
+            $seconds = RateLimiter::availableIn($rateLimitKey);
+            return response()->json([
+                'success' => false,
+                'message' => "Too many verification attempts. Please wait {$seconds} seconds before trying again.",
+                'errors' => [
+                    'rate_limit' => ['Rate limit exceeded']
+                ]
+            ], 429);
+        }
+
+        // Generate 6-digit code
+        $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $expiresAt = now()->addMinutes(5);
+
+        // Delete any existing verification for this email
+        DB::table('email_verifications')->where('email', $email)->delete();
+
+        // Store verification code
+        DB::table('email_verifications')->insert([
+            'email' => $email,
+            'code' => $code,
+            'attempts' => 0,
+            'expires_at' => $expiresAt,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // Send email
+        try {
+            Mail::send('emails.verification-code', ['code' => $code], function ($message) use ($email) {
+                $message->to($email)
+                    ->subject('Verify Your Email for EveFound');
+            });
+        } catch (\Exception $e) {
+            Log::error('Failed to send verification email: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to send verification email. Please try again.'
+            ], 500);
+        }
+
+        // Set rate limiter
+        RateLimiter::hit($rateLimitKey, 60);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Verification code sent to your email',
+            'data' => [
+                'expires_at' => $expiresAt->toISOString()
+            ]
+        ]);
+    }
+
+    public function verifyEmailCode(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email|max:255',
+            'code' => 'required|string|size:6',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => implode(", ", $validator->errors()->all()),
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $email = $request->email;
+        $code = $request->code;
+
+        // Get verification record
+        $verification = DB::table('email_verifications')
+            ->where('email', $email)
+            ->whereNull('verified_at')
+            ->first();
+
+        if (!$verification) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No verification request found. Please request a new code.',
+                'errors' => [
+                    'code' => ['Verification request not found']
+                ]
+            ], 404);
+        }
+
+        // Check if expired
+        if (now()->gt($verification->expires_at)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Verification code has expired. Please request a new one.',
+                'errors' => [
+                    'code' => ['Verification code expired']
+                ]
+            ], 422);
+        }
+
+        // Check attempts
+        if ($verification->attempts >= 5) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Too many failed attempts. Please request a new verification code.',
+                'errors' => [
+                    'code' => ['Maximum attempts exceeded']
+                ]
+            ], 422);
+        }
+
+        // Check if code matches
+        if ($verification->code !== $code) {
+            // Increment attempts
+            DB::table('email_verifications')
+                ->where('email', $email)
+                ->increment('attempts');
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid verification code',
+                'errors' => [
+                    'code' => ['The verification code is incorrect']
+                ]
+            ], 422);
+        }
+
+        // Mark as verified
+        DB::table('email_verifications')
+            ->where('email', $email)
+            ->update([
+                'verified_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Email verified successfully',
+            'data' => [
+                'email' => $email,
+                'verified' => true,
+                'verified_at' => now()->toISOString()
+            ]
+        ]);
+    }
 
     public function authReverb(Request $request): JsonResponse
     {

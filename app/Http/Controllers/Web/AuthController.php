@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Web;
 
-use App\Http\Controllers\Api\Controller;
+use Illuminate\Routing\Controller;
 use App\Jobs\SendWelcomeMail;
 use App\Mail\WelcomeMail;
 use App\Models\User;
