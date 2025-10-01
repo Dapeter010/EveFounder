@@ -90,7 +90,7 @@ class AuthController extends Controller
                 'message' => implode(",", $validator->errors()->all())
                     . ","
                     . implode(",", array_keys($validator->failed())),
-            ], 200);
+            ], 422);
         }
 
 
