@@ -23,7 +23,7 @@ class AuthController extends Controller
 {
     public function register(Request $request): JsonResponse
     {
-        try {
+//        try {
             $validator = Validator::make($request->all(), [
                 // Basic Info
                 'firstName' => 'required|string|max:255',
@@ -183,12 +183,12 @@ class AuthController extends Controller
                     'token' => $token,
                 ]
             ], 201);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-            ], 403);
-        }
+//        } catch (\Exception $e) {
+//            return response()->json([
+//                'success' => false,
+//                'message' => $e->getMessage(),
+//            ], 403);
+//        }
     }
 
     public function login(Request $request): JsonResponse
