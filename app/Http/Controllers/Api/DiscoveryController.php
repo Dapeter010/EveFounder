@@ -91,7 +91,7 @@ class DiscoveryController extends Controller
                 'success' => false,
                 'message' => 'Education filter requires Premium subscription',
                 'requires_premium' => true
-            ], 403);
+            ]);
         }
         $query->whereHas('userProfile', function ($q) use ($request) {
             $q->where('education_level', $request->education);
@@ -104,7 +104,7 @@ class DiscoveryController extends Controller
                 'success' => false,
                 'message' => 'Profession filter requires Premium subscription',
                 'requires_premium' => true
-            ], 403);
+            ]);
         }
         $query->whereHas('userProfile', function ($q) use ($request) {
             $q->where('occupation', $request->profession);
@@ -117,7 +117,7 @@ class DiscoveryController extends Controller
                 'success' => false,
                 'message' => 'Height filter requires Premium subscription',
                 'requires_premium' => true
-            ], 403);
+            ]);
         }
         $query->whereHas('userProfile', function ($q) use ($request) {
             $q->where('height', '>=', $request->min_height);
@@ -130,7 +130,7 @@ class DiscoveryController extends Controller
                 'success' => false,
                 'message' => 'Height filter requires Premium subscription',
                 'requires_premium' => true
-            ], 403);
+            ]);
         }
         $query->whereHas('userProfile', function ($q) use ($request) {
             $q->where('height', '<=', $request->max_height);
@@ -143,7 +143,7 @@ class DiscoveryController extends Controller
                 'success' => false,
                 'message' => 'Relationship type filter requires Premium subscription',
                 'requires_premium' => true
-            ], 403);
+            ]);
         }
         $query->whereHas('userProfile', function ($q) use ($request) {
             $q->where('relationship_goals', $request->relationship_type);
