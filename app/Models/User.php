@@ -33,6 +33,8 @@ class User extends Authenticatable
         'education',
         'profession',
         'relationship_type',
+        'fcm_token',
+        'notification_settings',
     ];
 
     protected $hidden = [
@@ -49,6 +51,7 @@ class User extends Authenticatable
         'is_active' => 'boolean',
         'latitude' => 'decimal:8',
         'longitude' => 'decimal:8',
+        'notification_settings' => 'array',
     ];
 
     protected static function boot()

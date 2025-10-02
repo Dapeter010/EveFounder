@@ -56,4 +56,8 @@ return [
         'webhook_secret' => env('SUPABASE_WEBHOOK_SECRET'),
         'allowed_webhook_ips' => explode(',', env('SUPABASE_WEBHOOK_ALLOWED_IPS', '')),
     ],
+
+    'firebase' => [
+        'server_key' => env('FIREBASE_SERVER_KEY'),
+    ],
 ];

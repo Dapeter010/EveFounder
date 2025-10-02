@@ -15,7 +15,7 @@ return [
     |
     */
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie'],
+    'paths' => ['api/*', 'sanctum/csrf-cookie', 'broadcasting/auth'],
 
     'allowed_methods' => ['*'],
 
@@ -26,6 +26,9 @@ return [
         'https://server.evefound.com',
         'https://www.server.evefound.com',
         'http://localhost:3000', // Keep for local development
+        'http://localhost:*',
+        'http://127.0.0.1:*',
+        'http://10.0.2.2:*',  // Android emulator
     ],
 
     'allowed_origins_patterns' => [],
@@ -36,6 +39,6 @@ return [
 
     'max_age' => 0,
 
-    'supports_credentials' => false,
+    'supports_credentials' => true,
 
 ];

@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\StatsController;
 use App\Http\Controllers\Api\VerificationController;
 use App\Http\Controllers\Api\SubscriptionController;
+use App\Http\Controllers\Api\MobileNotificationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -103,6 +104,12 @@ Route::group(['middleware' => ['auth:sanctum']], function () {
     // Profile stats
     Route::get('/stats', [StatsController::class, 'getUserStats']);
     Route::post('/location/update', [StatsController::class, 'updateLocation']);
+
+    // Mobile notifications (FCM)
+    Route::post('/notifications/fcm-token', [MobileNotificationController::class, 'updateFcmToken']);
+    Route::delete('/notifications/fcm-token', [MobileNotificationController::class, 'removeFcmToken']);
+    Route::put('/notifications/settings', [MobileNotificationController::class, 'updateSettings']);
+    Route::get('/notifications/settings', [MobileNotificationController::class, 'getSettings']);
 
     // Admin routes
     Route::prefix('admin')->group(function () { // In real app: add admin middleware

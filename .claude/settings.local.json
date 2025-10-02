@@ -6,7 +6,9 @@
       "Bash(php artisan make:controller:*)",
       "Bash(php artisan make:model:*)",
       "Bash(php artisan make:event:*)",
-      "Read(//Users/qwerty/www/Personal/evefound/**)"
+      "Read(//Users/qwerty/www/Personal/evefound/**)",
+      "Read(//Users/qwerty/www/Flutter/evefound/**)",
+      "Bash(php artisan:*)"
     ],
     "deny": [],
     "ask": []
