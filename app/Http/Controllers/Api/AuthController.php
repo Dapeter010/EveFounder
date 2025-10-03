@@ -82,14 +82,48 @@ class AuthController extends Controller
             'photo_3' => 'nullable|file|mimes:jpeg,png,jpg,heic,heif,webp|max:20480',
             'photo_4' => 'nullable|file|mimes:jpeg,png,jpg,heic,heif,webp|max:20480',
             'photo_5' => 'nullable|file|mimes:jpeg,png,jpg,heic,heif,webp|max:20480',
+        ], [
+            // Custom error messages
+            'photo_0.required' => 'At least one profile photo is required',
+            'photo_0.file' => 'Photo 1 must be a valid file',
+            'photo_0.mimes' => 'Photo 1 must be a JPEG, PNG, HEIC, HEIF, or WebP image',
+            'photo_0.max' => 'Photo 1 must not exceed 20MB',
+            'photo_1.mimes' => 'Photo 2 must be a JPEG, PNG, HEIC, HEIF, or WebP image',
+            'photo_1.max' => 'Photo 2 must not exceed 20MB',
+            'photo_2.mimes' => 'Photo 3 must be a JPEG, PNG, HEIC, HEIF, or WebP image',
+            'photo_2.max' => 'Photo 3 must not exceed 20MB',
+            'photo_3.mimes' => 'Photo 4 must be a JPEG, PNG, HEIC, HEIF, or WebP image',
+            'photo_3.max' => 'Photo 4 must not exceed 20MB',
+            'photo_4.mimes' => 'Photo 5 must be a JPEG, PNG, HEIC, HEIF, or WebP image',
+            'photo_4.max' => 'Photo 5 must not exceed 20MB',
+            'photo_5.mimes' => 'Photo 6 must be a JPEG, PNG, HEIC, HEIF, or WebP image',
+            'photo_5.max' => 'Photo 6 must not exceed 20MB',
+            'email.unique' => 'This email address is already registered',
+            'username.unique' => 'This username is already taken',
+            'dateOfBirth.before' => 'You must be at least 18 years old to register',
+            'password.min' => 'Password must be at least 8 characters',
+            'confirmPassword.same' => 'Password confirmation does not match',
+            'preferredAgeRange.size' => 'Preferred age range must have exactly 2 values (min and max)',
+            'interests.min' => 'Please select at least 3 interests',
+            'bio.min' => 'Bio must be at least 50 characters',
+            'bio.max' => 'Bio must not exceed 500 characters',
         ]);
 
         if ($validator->fails()) {
+            $errors = $validator->errors();
+
+            // Create detailed error message
+            $errorMessages = [];
+            foreach ($errors->messages() as $field => $messages) {
+                $fieldName = ucfirst(str_replace('_', ' ', $field));
+                $errorMessages[] = "$fieldName: " . implode(', ', $messages);
+            }
+
             return response()->json([
                 'success' => false,
-                'message' => implode(",", $validator->errors()->all())
-                    . ","
-                    . implode(",", array_keys($validator->failed())),
+                'message' => implode(' | ', $errorMessages),
+                'errors' => $errors->messages(), // Field-specific errors for frontend
+                'failed_fields' => array_keys($validator->failed()), // List of failed fields
             ], 422);
         }
 
