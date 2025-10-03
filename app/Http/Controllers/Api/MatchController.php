@@ -164,16 +164,18 @@ class MatchController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        $likes->transform(function ($like) {
+        $likes = $likes->filter(function ($like) {
+            return $like->liker !== null; // Filter out likes where the liker no longer exists
+        })->transform(function ($like) {
             $like->age = \Carbon\Carbon::parse($like->liker->date_of_birth)->age;
             // Get photos from the loaded relationship
-            if ($like->liker && $like->liker->relationLoaded('photos')) {
+            if ($like->liker->relationLoaded('photos')) {
                 $like->photos = $like->liker->photos->pluck('photo_url')->toArray();
             } else {
                 $like->photos = [];
             }
             return $like;
-        });
+        })->values(); // Re-index the collection
 
         return response()->json([
             'success' => true,
@@ -204,18 +206,20 @@ class MatchController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        $likes->transform(function ($like) {
+        $likes = $likes->filter(function ($like) {
+            return $like->liked !== null; // Filter out likes where the liked user no longer exists
+        })->transform(function ($like) {
             $like->age = \Carbon\Carbon::parse($like->liked->date_of_birth)->age;
 
             // Get photos from the loaded relationship
-            if ($like->liked && $like->liked->relationLoaded('photos')) {
+            if ($like->liked->relationLoaded('photos')) {
                 $like->photos = $like->liked->photos->pluck('photo_url')->toArray();
             } else {
                 $like->photos = [];
             }
 
             return $like;
-        });
+        })->values(); // Re-index the collection
 
 
         return response()->json([
