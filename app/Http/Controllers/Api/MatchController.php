@@ -189,10 +189,15 @@ class MatchController extends Controller
             ->with([
                 'liked' => function ($query) {
                     $query->select('user_id', 'first_name', 'last_name', 'date_of_birth', 'location', 'photos');
+                },
+                'liked.photos' => function ($query) {
+                    $query->select('user_id', 'photo_url'); // only select photo_url
                 }
             ])
             ->orderBy('created_at', 'desc')
             ->get();
+
+
 
         $likes->transform(function ($like) {
             $like->age = \Carbon\Carbon::parse($like->liked->date_of_birth)->age;
