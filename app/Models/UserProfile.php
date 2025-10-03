@@ -100,8 +100,8 @@ class UserProfile extends Model
             $this->load('photos');
         }
 
-        // Return photos from user_photos table
-        return $this->getRelation('photos')->toArray();
+        // Return photos from user_photos table as a collection
+        return $this->getRelation('photos');
     }
 
 
