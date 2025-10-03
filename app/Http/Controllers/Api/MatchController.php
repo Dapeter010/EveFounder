@@ -196,9 +196,9 @@ class MatchController extends Controller
 
         $likes->transform(function ($like) {
             $like->age = \Carbon\Carbon::parse($like->liked->date_of_birth)->age;
-            $like->liked->photos = $like->liked->photos->pluck('photo_url')->toArray();
-
-            $like->photos = $like->liked->photos;
+            // only return an array of photo URLs
+            $like->photos = $like->liked->photos->pluck('photo_url')->toArray();
+            unset($like->liked->photos); // remove full photos object if needed
 
             return $like;
         });
