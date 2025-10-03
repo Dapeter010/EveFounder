@@ -162,7 +162,7 @@ class MatchController extends Controller
 
         $likes->transform(function ($like) {
             $like->age = \Carbon\Carbon::parse($like->liker->date_of_birth)->age;
-            $like->photos = $like->liked->user_profile->photos;
+            $like->photos = $like->liker->photos;
             return $like;
         });
 
@@ -194,7 +194,7 @@ class MatchController extends Controller
 
         $likes->transform(function ($like) {
             $like->age = \Carbon\Carbon::parse($like->liked->date_of_birth)->age;
-            $like->photos = $like->liked->user_profile->photos;
+            $like->photos = $like->liked->photos;
 
             return $like;
         });
