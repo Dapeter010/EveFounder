@@ -162,9 +162,7 @@ class MatchController extends Controller
 
         $likes->transform(function ($like) {
             $like->age = \Carbon\Carbon::parse($like->liker->date_of_birth)->age;
-            $like->liker->photos = $like->liker->photos->pluck('photo_url')->toArray();
-
-            $like->photos = $like->liker->photos;
+            $like->photos = $like->liker->photos->pluck('photo_url')->toArray();
             return $like;
         });
 
@@ -189,21 +187,15 @@ class MatchController extends Controller
             ->with([
                 'liked' => function ($query) {
                     $query->select('user_id', 'first_name', 'last_name', 'date_of_birth', 'location', 'photos');
-                },
-                'liked.photos' => function ($query) {
-                    $query->select('user_id', 'photo_url'); // only select photo_url
                 }
             ])
             ->orderBy('created_at', 'desc')
             ->get();
 
-
-
         $likes->transform(function ($like) {
             $like->age = \Carbon\Carbon::parse($like->liked->date_of_birth)->age;
-            // only return an array of photo URLs
+
             $like->photos = $like->liked->photos->pluck('photo_url')->toArray();
-            unset($like->liked->photos); // remove full photos object if needed
 
             return $like;
         });
