@@ -46,7 +46,6 @@ class UserProfile extends Model
         'perfect_first_date',
         'favorite_weekend',
         'surprising_fact',
-        'photos',
         'notifications',
         'privacy_settings',
         'visibility_settings',
@@ -62,7 +61,6 @@ class UserProfile extends Model
         'preferred_genders' => 'array',
         'preferred_age_range' => 'array',
         'interests' => 'array',
-        'photos' => 'array',
         'notifications' => 'array',
         'privacy_settings' => 'array',
         'visibility_settings' => 'array',
@@ -90,17 +88,20 @@ class UserProfile extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function photos(): HasMany
+    {
+        return $this->hasMany(UserPhoto::class, 'user_id', 'user_id')->orderBy('order');
+    }
+
     public function getPhotosAttribute($value)
     {
-        $photos = json_decode($value, true) ?? [];
+        // For backward compatibility: if accessing photos directly, load from relationship
+        if (!$this->relationLoaded('photos')) {
+            $this->load('photos');
+        }
 
-        return collect($photos)->map(function ($photo) {
-            // If URL is relative, prepend app URL
-            if (isset($photo['url']) && !str_starts_with($photo['url'], 'http')) {
-                $photo['url'] = url($photo['url']);
-            }
-            return $photo;
-        })->toArray();
+        // Return photos from user_photos table
+        return $this->getRelation('photos')->toArray();
     }
 
 
@@ -198,12 +199,20 @@ class UserProfile extends Model
 
     public function getPrimaryPhoto()
     {
-        if (!$this->photos || !is_array($this->photos)) {
-            return null;
+        // Load photos relationship if not already loaded
+        if (!$this->relationLoaded('photos')) {
+            $this->load('photos');
         }
 
-        $primary = collect($this->photos)->firstWhere('is_primary', true);
-        return $primary ?? $this->photos[0] ?? null;
+        // Get primary photo from user_photos table
+        $primary = $this->photos()->where('is_primary', true)->first();
+
+        if ($primary) {
+            return $primary;
+        }
+
+        // Fallback to first photo if no primary set
+        return $this->photos()->orderBy('order')->first();
     }
 
     public function updateLastActive()
