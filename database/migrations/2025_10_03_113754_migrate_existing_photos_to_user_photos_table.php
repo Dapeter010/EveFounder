@@ -51,6 +51,16 @@ return new class extends Migration
                     continue; // Skip duplicates
                 }
 
+                // Parse uploaded_at if it exists and is in ISO format
+                $createdAt = now();
+                if (isset($photo['uploaded_at'])) {
+                    try {
+                        $createdAt = \Carbon\Carbon::parse($photo['uploaded_at']);
+                    } catch (\Exception $e) {
+                        $createdAt = now();
+                    }
+                }
+
                 // Insert into user_photos table
                 DB::table('user_photos')->insert([
                     'user_id' => $profile->user_id,
@@ -58,8 +68,8 @@ return new class extends Migration
                     'order' => $photo['order'] ?? 0,
                     'is_primary' => $photo['is_primary'] ?? false,
                     'is_verified' => false,
-                    'created_at' => $photo['uploaded_at'] ?? now(),
-                    'updated_at' => now(),
+                    'created_at' => $createdAt->format('Y-m-d H:i:s'),
+                    'updated_at' => now()->format('Y-m-d H:i:s'),
                 ]);
             }
         }
