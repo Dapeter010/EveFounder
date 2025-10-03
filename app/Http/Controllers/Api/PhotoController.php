@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 //use App\Http\Controllers\Controller;
 use App\Models\UserProfile;
+use App\Models\UserPhoto;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
@@ -17,9 +18,9 @@ class PhotoController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'photo' => 'required|image|mimes:jpeg,png,jpg|max:5120', // 5MB max
+            'photo' => 'required|file|mimes:jpeg,png,jpg,heic,heif,webp|max:20480', // 20MB max
             'order' => 'nullable|integer|min:0|max:5',
-            'is_primary' => 'nullable|string',
+            'is_primary' => 'nullable|boolean',
         ]);
 
         if ($validator->fails()) {
@@ -29,20 +30,18 @@ class PhotoController extends Controller
             ], 422);
         }
 
-        // In real app, get user from token
         $user = Auth::user();
 
         if (!$user) {
             return response()->json([
                 'success' => false,
                 'message' => 'User not authenticated'
-            ], 404);
+            ], 401);
         }
 
         // Check if user already has 6 photos
-        $userProfile = UserProfile::where("user_id", $user->id)->first();
-        $currentPhotos = $userProfile->photos ?? [];
-        if (count($currentPhotos) >= 6) {
+        $currentPhotosCount = UserPhoto::where('user_id', $user->id)->count();
+        if ($currentPhotosCount >= 6) {
             return response()->json([
                 'success' => false,
                 'message' => 'Maximum 6 photos allowed'
@@ -51,27 +50,35 @@ class PhotoController extends Controller
 
         // Upload photo
         $file = $request->file('photo');
-        $filename = uniqid() . '.' . $file->getClientOriginalExtension();
+        $extension = strtolower($file->getClientOriginalExtension());
+
+        // Convert HEIC/HEIF to JPEG for compatibility
+        if (in_array($extension, ['heic', 'heif'])) {
+            $extension = 'jpg';
+        }
+
+        $filename = uniqid() . '.' . $extension;
         $path = $file->storeAs('profile-photos', $filename, 'public');
 
-        $photoData = [
-            'url' => Storage::url($path),
-            'filename' => $filename,
-            'order' => $request->order ?? count($currentPhotos),
-            'is_primary' => $request->boolean('is_primary', count($currentPhotos) === 0),
-            'uploaded_at' => now()->toISOString(),
-        ];
-        // Add to user's photos array
-        array_push($currentPhotos, $photoData);
+        $isPrimary = $request->boolean('is_primary', $currentPhotosCount === 0);
 
-//        $currentPhotos[] = $photoData;
-//        $user->update(['photos' => $currentPhotos]);
-        $user->userProfile()->update(['photos' => $currentPhotos]);
+        // If setting as primary, unset other primary photos
+        if ($isPrimary) {
+            UserPhoto::where('user_id', $user->id)->update(['is_primary' => false]);
+        }
+
+        // Create photo record
+        $photo = UserPhoto::create([
+            'user_id' => $user->id,
+            'photo_url' => Storage::url($path),
+            'order' => $request->order ?? $currentPhotosCount,
+            'is_primary' => $isPrimary,
+        ]);
 
         return response()->json([
             'success' => true,
             'message' => 'Photo uploaded successfully',
-            'data' => $photoData
+            'data' => $photo
         ]);
     }
 
@@ -89,22 +96,20 @@ class PhotoController extends Controller
             ], 422);
         }
 
-        // In real app, get user from token
-        $user = UserProfile::where('username', 'demo')->first();
+        $user = Auth::user();
 
         if (!$user) {
             return response()->json([
                 'success' => false,
-                'message' => 'User not found'
-            ], 404);
+                'message' => 'User not authenticated'
+            ], 401);
         }
 
-        $photos = $user->photos ?? [];
-        $photoIndex = collect($photos)->search(function ($photo) use ($photoId) {
-            return isset($photo['id']) && $photo['id'] == $photoId;
-        });
+        $photo = UserPhoto::where('id', $photoId)
+            ->where('user_id', $user->id)
+            ->first();
 
-        if ($photoIndex === false) {
+        if (!$photo) {
             return response()->json([
                 'success' => false,
                 'message' => 'Photo not found'
@@ -113,48 +118,46 @@ class PhotoController extends Controller
 
         // Update photo data
         if ($request->has('order')) {
-            $photos[$photoIndex]['order'] = $request->order;
+            $photo->order = $request->order;
         }
 
         if ($request->has('is_primary')) {
-            // If setting as primary, unset other primary photos
             if ($request->boolean('is_primary')) {
-                foreach ($photos as &$photo) {
-                    $photo['is_primary'] = false;
-                }
-                $photos[$photoIndex]['is_primary'] = true;
+                // If setting as primary, unset other primary photos
+                UserPhoto::where('user_id', $user->id)
+                    ->where('id', '!=', $photoId)
+                    ->update(['is_primary' => false]);
+                $photo->is_primary = true;
             } else {
-                $photos[$photoIndex]['is_primary'] = false;
+                $photo->is_primary = false;
             }
         }
 
-        $user->update(['photos' => $photos]);
+        $photo->save();
 
         return response()->json([
             'success' => true,
             'message' => 'Photo updated successfully',
-            'data' => $photos[$photoIndex]
+            'data' => $photo
         ]);
     }
 
     public function destroy(Request $request, $photoId): JsonResponse
     {
-        // In real app, get user from token
-        $user = UserProfile::where('username', 'demo')->first();
+        $user = Auth::user();
 
         if (!$user) {
             return response()->json([
                 'success' => false,
-                'message' => 'User not found'
-            ], 404);
+                'message' => 'User not authenticated'
+            ], 401);
         }
 
-        $photos = $user->photos ?? [];
-        $photoIndex = collect($photos)->search(function ($photo) use ($photoId) {
-            return isset($photo['id']) && $photo['id'] == $photoId;
-        });
+        $photo = UserPhoto::where('id', $photoId)
+            ->where('user_id', $user->id)
+            ->first();
 
-        if ($photoIndex === false) {
+        if (!$photo) {
             return response()->json([
                 'success' => false,
                 'message' => 'Photo not found'
@@ -162,16 +165,13 @@ class PhotoController extends Controller
         }
 
         // Delete file from storage
-        $photo = $photos[$photoIndex];
-        if (isset($photo['filename'])) {
-            Storage::disk('public')->delete('profile-photos/' . $photo['filename']);
+        $photoPath = str_replace('/storage/', '', $photo->photo_url);
+        if (Storage::disk('public')->exists($photoPath)) {
+            Storage::disk('public')->delete($photoPath);
         }
 
-        // Remove from array
-        unset($photos[$photoIndex]);
-        $photos = array_values($photos); // Re-index array
-
-        $user->update(['photos' => $photos]);
+        // Delete photo record
+        $photo->delete();
 
         return response()->json([
             'success' => true,

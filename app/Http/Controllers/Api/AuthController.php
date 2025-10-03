@@ -128,8 +128,8 @@ class AuthController extends Controller
         }
 
 
-        // Handle photo uploads
-        $photos = [];
+        // Handle photo uploads - will be stored in user_photos table after user creation
+        $photosToCreate = [];
         for ($i = 0; $i < 6; $i++) {
             if ($request->hasFile("photo_$i")) {
                 $file = $request->file("photo_$i");
@@ -143,12 +143,10 @@ class AuthController extends Controller
                 $filename = uniqid() . '.' . $extension;
                 $path = $file->storeAs('profile-photos', $filename, 'public');
 
-                $photos[] = [
-                    'url' => Storage::url($path),
-                    'filename' => $filename,
+                $photosToCreate[] = [
+                    'photo_url' => Storage::url($path),
                     'order' => $i,
                     'is_primary' => $i === 0,
-                    'uploaded_at' => now()->toISOString(),
                 ];
             }
         }
@@ -209,10 +207,15 @@ class AuthController extends Controller
             'perfect_first_date' => $request->perfectFirstDate,
             'favorite_weekend' => $request->favoriteWeekend,
             'surprising_fact' => $request->surprisingFact,
-            'photos' => $photos,
             'registration_date' => now(),
             'last_active_at' => now(),
         ]);
+
+        // Create user photos in user_photos table
+        foreach ($photosToCreate as $photoData) {
+            $user->photos()->create($photoData);
+        }
+
         $token = $user->createToken('authToken')->plainTextToken;
 
         Auth::login($user);
@@ -332,8 +335,10 @@ class AuthController extends Controller
         $userData['lastName'] = $userData['last_name'] ?? null;
         $userData['preferences'] = $userData['user_profile'];
         $userData['age'] = \Carbon\Carbon::parse($userData['date_of_birth'])->age;
-        $userData['photos'] = $userData['user_profile']['photos'];
-        $userData['images'] = $userData['user_profile']['photos'];
+
+        // Use photos from user_photos table, ordered by order field
+        $userData['photos'] = $userData['photos'] ?? [];
+        $userData['images'] = $userData['photos'];
 
         // Optionally remove the old snake_case keys if frontend doesn’t need them
 //        unset($userData['first_name'], $userData['last_name']);
