@@ -170,7 +170,8 @@ class MatchController extends Controller
             $like->age = \Carbon\Carbon::parse($like->liker->date_of_birth)->age;
             // Get photos from the loaded relationship
             if ($like->liker->relationLoaded('photos')) {
-                $like->photos = $like->liker->photos->pluck('photo_url')->toArray();
+                $like->liker->photos = $like->liker->photos->pluck('photo_url')->toArray();
+                $like->photos = $like->liker->photos;
             } else {
                 $like->photos = [];
             }
@@ -213,7 +214,8 @@ class MatchController extends Controller
 
             // Get photos from the loaded relationship
             if ($like->liked->relationLoaded('photos')) {
-                $like->photos = $like->liked->photos->pluck('photo_url')->toArray();
+                $like->liked->photos = $like->liked->photos->pluck('photo_url')->toArray();
+                $like->photos = $like->liked->photos;
             } else {
                 $like->photos = [];
             }
