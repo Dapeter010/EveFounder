@@ -8,7 +8,8 @@
       "Bash(php artisan make:event:*)",
       "Read(//Users/qwerty/www/Personal/evefound/**)",
       "Read(//Users/qwerty/www/Flutter/evefound/**)",
-      "Bash(php artisan:*)"
+      "Bash(php artisan:*)",
+      "Bash(php:*)"
     ],
     "deny": [],
     "ask": []

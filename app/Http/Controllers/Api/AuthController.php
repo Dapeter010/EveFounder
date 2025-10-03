@@ -75,13 +75,13 @@ class AuthController extends Controller
             'favoriteWeekend' => 'required|string|min:20|max:1000',
             'surprisingFact' => 'required|string|min:20|max:1000',
 
-            // Photos
-            'photo_0' => 'required|image|mimes:jpeg,png,jpg|max:10120', // 10MB max
-            'photo_1' => 'nullable|image|mimes:jpeg,png,jpg|max:10120',
-            'photo_2' => 'nullable|image|mimes:jpeg,png,jpg|max:10120',
-            'photo_3' => 'nullable|image|mimes:jpeg,png,jpg|max:10120',
-            'photo_4' => 'nullable|image|mimes:jpeg,png,jpg|max:10120',
-            'photo_5' => 'nullable|image|mimes:jpeg,png,jpg|max:10120',
+            // Photos - Accept common formats including iPhone HEIC
+            'photo_0' => 'required|file|mimes:jpeg,png,jpg,heic,heif,webp|max:20480', // 20MB max
+            'photo_1' => 'nullable|file|mimes:jpeg,png,jpg,heic,heif,webp|max:20480',
+            'photo_2' => 'nullable|file|mimes:jpeg,png,jpg,heic,heif,webp|max:20480',
+            'photo_3' => 'nullable|file|mimes:jpeg,png,jpg,heic,heif,webp|max:20480',
+            'photo_4' => 'nullable|file|mimes:jpeg,png,jpg,heic,heif,webp|max:20480',
+            'photo_5' => 'nullable|file|mimes:jpeg,png,jpg,heic,heif,webp|max:20480',
         ]);
 
         if ($validator->fails()) {
@@ -99,7 +99,14 @@ class AuthController extends Controller
         for ($i = 0; $i < 6; $i++) {
             if ($request->hasFile("photo_$i")) {
                 $file = $request->file("photo_$i");
-                $filename = uniqid() . '.' . $file->getClientOriginalExtension();
+                $extension = strtolower($file->getClientOriginalExtension());
+
+                // Convert HEIC/HEIF to JPEG for compatibility
+                if (in_array($extension, ['heic', 'heif'])) {
+                    $extension = 'jpg';
+                }
+
+                $filename = uniqid() . '.' . $extension;
                 $path = $file->storeAs('profile-photos', $filename, 'public');
 
                 $photos[] = [
