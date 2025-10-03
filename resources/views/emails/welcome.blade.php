@@ -1,42 +1,55 @@
 @component('mail::message')
-# 👋 Welcome to OddJobber, {{ ucfirst($user->first_name) }}!
+# Welcome to EveFound, {{ ucfirst($user->first_name) }}!
 
 ---
 
-## 🌟 Congratulations!
-You’ve successfully joined **OddJobber**. We’re thrilled to have you onboard as we connect you with the best odd job opportunities and skilled professionals to meet your needs.
+We're absolutely delighted to have you join the EveFound community! We're personally invested in helping you find meaningful connections and, ultimately, the love you deserve.
 
-### 🚀 Your OddJobber Journey Starts Here
-Here’s what we offer to make your experience seamless:
+## Your Journey to Love Starts Here
+
+EveFound is more than just a dating platform – it's a carefully crafted space designed to help UK singles like you find genuine, lasting relationships. We're here to support you every step of the way.
 
 @component('mail::panel')
-### 🛠️ What You Get:
-- **Access to a Wide Network:** Connect with trusted professionals or clients across various services.
-- **Real-Time Job Updates:** Stay informed about the latest job postings or applicant progress.
-- **Secure Payments:** Enjoy a safe and hassle-free payment system for all transactions.
+### Getting Started - Your Path to Success:
+
+**Complete Your Profile:**
+A complete, authentic profile is your first step to finding compatible matches. Let your personality shine through!
+
+**Discover Your Matches:**
+Our intelligent matching system connects you with people who share your values and interests.
+
+**Start Meaningful Conversations:**
+When you match with someone special, don't hesitate – send that first message!
 @endcomponent
 
 ---
 
-## 🔐 Your Default PIN:
-To get started, your default transaction pin is: **{{ $pin }}**
+## Boost Your Success
 
-> Please ensure you update your PIN after logging in to keep your account secure.
+Want to increase your chances of finding that special someone? Here are some premium features to consider:
 
----
+**Profile Boosts** – Get more visibility and stand out to potential matches in your area. Perfect for when you want to make a great first impression!
 
-## ✅ Validate Your Email
-Activate your account within **24 hours** to ensure uninterrupted access by clicking the button below:
+**Premium Subscription** – Unlock advanced features including unlimited likes, see who's liked you, and get priority visibility in searches. Our premium members find matches faster!
 
-@component('mail::button', ['url' => $verification, 'color' => 'success'])
-Activate Your Account
+@component('mail::button', ['url' => config('app.frontend_url') . '/subscription', 'color' => 'primary'])
+Explore Premium Features
 @endcomponent
 
 ---
 
-Thank you for choosing **OddJobber**! We’re here to help you accomplish more with ease.
-If you need assistance, feel free to contact our support team anytime.
+## We're Here for You
 
-Warm regards,
-**The OddJobber Team**
+Your success in finding love matters to us personally. We're constantly working to create the best experience for our community.
+
+If you have any questions, suggestions, or just want to share your experience, we'd love to hear from you at **contactus@evefound.com**
+
+Here's to finding your perfect match!
+
+Warmest regards,
+**The EveFound Team**
+
+---
+
+*P.S. Don't forget to add your best photos and fill out your profile completely – it makes all the difference!*
 @endcomponent

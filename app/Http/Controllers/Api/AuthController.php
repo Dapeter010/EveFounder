@@ -176,6 +176,9 @@ class AuthController extends Controller
 
         Auth::login($user);
 
+        // Send welcome email
+        \App\Jobs\SendWelcomeMail::dispatch($user, null);
+
         return response()->json([
             'success' => true,
             'message' => 'User registered successfully',
