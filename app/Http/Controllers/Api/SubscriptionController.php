@@ -12,6 +12,10 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Stripe\Customer;
+use Stripe\EphemeralKey;
+use Stripe\PaymentIntent;
+use Stripe\Stripe;
 
 class SubscriptionController extends Controller
 {
@@ -183,20 +187,20 @@ class SubscriptionController extends Controller
 
         // Create Stripe Payment Intent
         try {
-            \Stripe\Stripe::setApiKey(config('services.stripe.secret'));
+            Stripe::setApiKey(config('services.stripe.secret'));
 
             // Get or create Stripe customer
             $customer = null;
             if ($user->stripe_customer_id) {
                 try {
-                    $customer = \Stripe\Customer::retrieve($user->stripe_customer_id);
+                    $customer = Customer::retrieve($user->stripe_customer_id);
                 } catch (\Exception $e) {
                     $customer = null;
                 }
             }
 
             if (!$customer) {
-                $customer = \Stripe\Customer::create([
+                $customer = Customer::create([
                     'email' => $user->email,
                     'name' => trim($user->first_name . ' ' . $user->last_name),
                     'metadata' => [
@@ -209,13 +213,13 @@ class SubscriptionController extends Controller
             }
 
             // Create ephemeral key for customer
-            $ephemeralKey = \Stripe\EphemeralKey::create(
+            $ephemeralKey = EphemeralKey::create(
                 ['customer' => $customer->id],
                 ['stripe_version' => '2024-11-20.acacia']
             );
 
             // For subscriptions, create payment intent for first payment
-            $paymentIntent = \Stripe\PaymentIntent::create([
+            $paymentIntent = PaymentIntent::create([
                 'amount' => $cost * 100, // Convert to pence
                 'currency' => 'gbp',
                 'customer' => $customer->id,

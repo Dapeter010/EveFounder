@@ -11,6 +11,10 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use Stripe\Customer;
+use Stripe\EphemeralKey;
+use Stripe\PaymentIntent;
+use Stripe\Stripe;
 
 class BoostController extends Controller
 {
@@ -295,13 +299,13 @@ class BoostController extends Controller
 
         // Create Stripe Payment Intent
         try {
-            \Stripe\Stripe::setApiKey(config('services.stripe.secret'));
+            Stripe::setApiKey(config('services.stripe.secret'));
 
             // Get or create Stripe customer
             $customer = null;
             if ($user->stripe_customer_id) {
                 try {
-                    $customer = \Stripe\Customer::retrieve($user->stripe_customer_id);
+                    $customer = Customer::retrieve($user->stripe_customer_id);
                 } catch (\Exception $e) {
                     // Customer doesn't exist, create new one
                     $customer = null;
@@ -309,7 +313,7 @@ class BoostController extends Controller
             }
 
             if (!$customer) {
-                $customer = \Stripe\Customer::create([
+                $customer = Customer::create([
                     'email' => $user->email,
                     'name' => trim($user->first_name . ' ' . $user->last_name),
                     'metadata' => [
@@ -322,13 +326,13 @@ class BoostController extends Controller
             }
 
             // Create ephemeral key for customer
-            $ephemeralKey = \Stripe\EphemeralKey::create(
+            $ephemeralKey = EphemeralKey::create(
                 ['customer' => $customer->id],
                 ['stripe_version' => '2024-11-20.acacia']
             );
 
             // Create payment intent
-            $paymentIntent = \Stripe\PaymentIntent::create([
+            $paymentIntent = PaymentIntent::create([
                 'amount' => $boostConfig['price'] * 100, // Convert to pence
                 'currency' => $boostConfig['currency'],
                 'customer' => $customer->id,
