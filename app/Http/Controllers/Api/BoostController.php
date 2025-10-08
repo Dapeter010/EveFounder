@@ -295,7 +295,7 @@ class BoostController extends Controller
 
         // Create Stripe Payment Intent
         try {
-            \Stripe\Stripe::setApiKey(env('STRIPE_SECRET_KEY'));
+            \Stripe\Stripe::setApiKey(config('services.stripe.secret'));
 
             // Get or create Stripe customer
             $customer = null;
