@@ -149,6 +149,111 @@ class SubscriptionController extends Controller
         }
     }
 
+    /**
+     * Create Payment Intent for in-app Flutter Stripe subscriptions
+     */
+    public function createPaymentIntent(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'plan_type' => 'required|in:basic,premium',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => implode(",", $validator->errors()->all()),
+            ], 422);
+        }
+
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not authenticated'
+            ], 401);
+        }
+
+        // Get plan details
+        [$cost, $name] = match ($request->plan_type) {
+            'basic' => [9.99, 'Basic Subscription'],
+            'premium' => [19.99, 'Premium Subscription'],
+            default => [9.99, 'Basic Subscription'],
+        };
+
+        // Create Stripe Payment Intent
+        try {
+            \Stripe\Stripe::setApiKey(env('STRIPE_SECRET_KEY'));
+
+            // Get or create Stripe customer
+            $customer = null;
+            if ($user->stripe_customer_id) {
+                try {
+                    $customer = \Stripe\Customer::retrieve($user->stripe_customer_id);
+                } catch (\Exception $e) {
+                    $customer = null;
+                }
+            }
+
+            if (!$customer) {
+                $customer = \Stripe\Customer::create([
+                    'email' => $user->email,
+                    'name' => trim($user->first_name . ' ' . $user->last_name),
+                    'metadata' => [
+                        'user_id' => $user->uid,
+                    ],
+                ]);
+
+                // Store customer ID
+                $user->update(['stripe_customer_id' => $customer->id]);
+            }
+
+            // Create ephemeral key for customer
+            $ephemeralKey = \Stripe\EphemeralKey::create(
+                ['customer' => $customer->id],
+                ['stripe_version' => '2024-11-20.acacia']
+            );
+
+            // For subscriptions, create payment intent for first payment
+            $paymentIntent = \Stripe\PaymentIntent::create([
+                'amount' => $cost * 100, // Convert to pence
+                'currency' => 'gbp',
+                'customer' => $customer->id,
+                'description' => $name . ' - Monthly',
+                'setup_future_usage' => 'off_session', // For recurring payments
+                'metadata' => [
+                    'user_id' => $user->uid,
+                    'plan_type' => $request->plan_type,
+                    'type' => 'subscription',
+                ],
+                'automatic_payment_methods' => [
+                    'enabled' => true,
+                ],
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'clientSecret' => $paymentIntent->client_secret,
+                    'ephemeralKey' => $ephemeralKey->secret,
+                    'customer' => $customer->id,
+                    'paymentIntentId' => $paymentIntent->id,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to create subscription payment intent', [
+                'error' => $e->getMessage(),
+                'plan_type' => $request->plan_type,
+                'user_id' => $user->id
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create subscription payment intent: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function cancel(Request $request): JsonResponse
     {
         $user = Auth::user();

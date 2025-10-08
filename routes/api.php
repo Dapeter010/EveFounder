@@ -86,12 +86,12 @@ Route::group(['middleware' => ['auth:sanctum']], function () {
     Route::post('/boosts/{boostId}/cancel', [BoostController::class, 'cancel']);
     Route::put('/boosts/{boostId}/stats', [BoostController::class, 'updateStats']);
 
+    // Stripe Checkout (web/browser redirect)
     Route::post('/boosts/checkout', [BoostController::class, 'createCheckoutSession']);
     Route::get('/boosts/payment-status/{sessionId}', [BoostController::class, 'checkPaymentStatus']);
 
-// Optional: Keep these for backward compatibility or admin use
-    Route::post('/boosts/{boostId}/cancel', [BoostController::class, 'cancel']);
-    Route::put('/boosts/{boostId}/stats', [BoostController::class, 'updateStats']);
+    // Stripe Payment Intent (Flutter in-app payments)
+    Route::post('/boosts/payment-intent', [BoostController::class, 'createPaymentIntent']);
 
     // Verification
     Route::post('/verification/photo', [VerificationController::class, 'submitPhoto']);
@@ -101,8 +101,11 @@ Route::group(['middleware' => ['auth:sanctum']], function () {
     Route::get('/subscription', [SubscriptionController::class, 'index']);
     Route::post('/subscription/cancel', [SubscriptionController::class, 'cancel']);
 
-    // Stripe routes
+    // Stripe Checkout (web/browser redirect)
     Route::post('/stripe/checkout', [SubscriptionController::class, 'createCheckoutSession']);
+
+    // Stripe Payment Intent (Flutter in-app payments)
+    Route::post('/subscription/payment-intent', [SubscriptionController::class, 'createPaymentIntent']);
 
     // Payment methods
     Route::get('/payment-methods', [PaymentMethodController::class, 'index']);

@@ -252,6 +252,121 @@ class BoostController extends Controller
     }
 
     /**
+     * Create Payment Intent for in-app Flutter Stripe payments
+     */
+    public function createPaymentIntent(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'boost_id' => 'required|in:profile,super,weekend',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => implode(",", $validator->errors()->all()),
+            ], 422);
+        }
+
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not authenticated'
+            ], 401);
+        }
+
+        // Check if user has an active boost
+        $activeBoost = ProfileBoost::where('user_id', $user->id)
+            ->where('status', 'active')
+            ->where('ends_at', '>', now())
+            ->first();
+
+        if ($activeBoost) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You already have an active boost. Please wait until it expires before purchasing another.'
+            ], 400);
+        }
+
+        $boostId = $request->boost_id;
+        $boostOptions = $this->getBoostOptions();
+        $boostConfig = $boostOptions[$boostId];
+
+        // Create Stripe Payment Intent
+        try {
+            \Stripe\Stripe::setApiKey(env('STRIPE_SECRET_KEY'));
+
+            // Get or create Stripe customer
+            $customer = null;
+            if ($user->stripe_customer_id) {
+                try {
+                    $customer = \Stripe\Customer::retrieve($user->stripe_customer_id);
+                } catch (\Exception $e) {
+                    // Customer doesn't exist, create new one
+                    $customer = null;
+                }
+            }
+
+            if (!$customer) {
+                $customer = \Stripe\Customer::create([
+                    'email' => $user->email,
+                    'name' => trim($user->first_name . ' ' . $user->last_name),
+                    'metadata' => [
+                        'user_id' => $user->uid,
+                    ],
+                ]);
+
+                // Store customer ID
+                $user->update(['stripe_customer_id' => $customer->id]);
+            }
+
+            // Create ephemeral key for customer
+            $ephemeralKey = \Stripe\EphemeralKey::create(
+                ['customer' => $customer->id],
+                ['stripe_version' => '2024-11-20.acacia']
+            );
+
+            // Create payment intent
+            $paymentIntent = \Stripe\PaymentIntent::create([
+                'amount' => $boostConfig['price'] * 100, // Convert to pence
+                'currency' => $boostConfig['currency'],
+                'customer' => $customer->id,
+                'description' => $boostConfig['name'],
+                'metadata' => [
+                    'user_id' => $user->uid,
+                    'boost_type' => $boostId,
+                    'type' => 'boost',
+                ],
+                'automatic_payment_methods' => [
+                    'enabled' => true,
+                ],
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'clientSecret' => $paymentIntent->client_secret,
+                    'ephemeralKey' => $ephemeralKey->secret,
+                    'customer' => $customer->id,
+                    'paymentIntentId' => $paymentIntent->id,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to create payment intent', [
+                'error' => $e->getMessage(),
+                'boost_id' => $boostId,
+                'user_id' => $user->id
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create payment intent: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Checks if payment was completed and boost was activated
      * Called by success page to verify boost activation
      */
