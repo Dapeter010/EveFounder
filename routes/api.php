@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\StatsController;
 use App\Http\Controllers\Api\VerificationController;
 use App\Http\Controllers\Api\SubscriptionController;
 use App\Http\Controllers\Api\MobileNotificationController;
+use App\Http\Controllers\Api\PaymentMethodController;
 
 /*
 |--------------------------------------------------------------------------
@@ -23,10 +24,12 @@ use App\Http\Controllers\Api\MobileNotificationController;
 */
 
 // Public routes
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
-Route::post('/auth/send-verification-code', [AuthController::class, 'sendEmailVerificationCode']);
-Route::post('/auth/verify-email-code', [AuthController::class, 'verifyEmailCode']);
+Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:register');
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
+Route::post('/auth/send-verification-code', [AuthController::class, 'sendEmailVerificationCode'])->middleware('throttle:auth');
+Route::post('/auth/verify-email-code', [AuthController::class, 'verifyEmailCode'])->middleware('throttle:auth');
+Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:auth');
+Route::post('/auth/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:auth');
 Route::get('/filters/options', [StatsController::class, 'getFilterOptions']);
 
 // Protected routes
@@ -59,15 +62,15 @@ Route::group(['middleware' => ['auth:sanctum']], function () {
     // Messages routes
     Route::get('/conversations', [MessageController::class, 'getConversations']);
     Route::get('/conversations/{matchId}/messages', [MessageController::class, 'getMessages']);
-    Route::post('/conversations/{matchId}/messages', [MessageController::class, 'sendMessage']);
+    Route::post('/conversations/{matchId}/messages', [MessageController::class, 'sendMessage'])->middleware('throttle:messaging');
     Route::put('/messages/{messageId}/read', [MessageController::class, 'markAsRead']);
     Route::delete('/messages/{messageId}', [MessageController::class, 'deleteMessage']);
     Route::get('/conversations/{matchId}/info', [MessageController::class, 'getConversationInfo']);
-    Route::post('/conversations/{matchId}/typing', [MessageController::class, 'sendTypingIndicator']);
+    Route::post('/conversations/{matchId}/typing', [MessageController::class, 'sendTypingIndicator'])->middleware('throttle:messaging');
 
     // Photo management
-    Route::post('/photos', [PhotoController::class, 'store']);
-    Route::put('/photos/{id}', [PhotoController::class, 'update']);
+    Route::post('/photos', [PhotoController::class, 'store'])->middleware('throttle:uploads');
+    Route::put('/photos/{id}', [PhotoController::class, 'update'])->middleware('throttle:uploads');
     Route::delete('/photos/{id}', [PhotoController::class, 'destroy']);
 
     // Safety & Reporting
@@ -101,6 +104,13 @@ Route::group(['middleware' => ['auth:sanctum']], function () {
     // Stripe routes
     Route::post('/stripe/checkout', [SubscriptionController::class, 'createCheckoutSession']);
 
+    // Payment methods
+    Route::get('/payment-methods', [PaymentMethodController::class, 'index']);
+    Route::post('/payment-methods/setup-intent', [PaymentMethodController::class, 'createSetupIntent']);
+    Route::post('/payment-methods/attach', [PaymentMethodController::class, 'attach']);
+    Route::delete('/payment-methods/{paymentMethodId}', [PaymentMethodController::class, 'detach']);
+    Route::post('/payment-methods/{paymentMethodId}/default', [PaymentMethodController::class, 'setDefault']);
+
     // Profile stats
     Route::get('/stats', [StatsController::class, 'getUserStats']);
     Route::post('/location/update', [StatsController::class, 'updateLocation']);
@@ -131,7 +141,11 @@ Route::group(['middleware' => ['auth:sanctum']], function () {
 });
 
 
-Route::post('/webhooks/stripe', [BoostController::class, 'handleWebhook'])
+// Stripe webhooks - no auth middleware, verified by Stripe signature
+Route::post('/webhooks/stripe', [\App\Http\Controllers\Api\StripeWebhookController::class, 'handle']);
+
+// Legacy Supabase webhook (for boost purchases via Supabase Edge Function)
+Route::post('/webhooks/stripe/supabase', [BoostController::class, 'handleWebhook'])
     ->middleware(['verify.supabase.webhook']);
 
 Route::middleware('auth:sanctum')->group(function () {

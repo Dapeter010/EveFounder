@@ -60,4 +60,15 @@ return [
     'firebase' => [
         'server_key' => env('FIREBASE_SERVER_KEY'),
     ],
+
+    'stripe' => [
+        'key' => env('STRIPE_KEY'),
+        'secret' => env('STRIPE_SECRET'),
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+        'basic_price_id' => env('STRIPE_BASIC_PRICE_ID'),
+        'premium_price_id' => env('STRIPE_PREMIUM_PRICE_ID'),
+        'profile_boost_price_id' => env('STRIPE_PROFILE_BOOST_PRICE_ID'),
+        'super_boost_price_id' => env('STRIPE_SUPER_BOOST_PRICE_ID'),
+        'weekend_boost_price_id' => env('STRIPE_WEEKEND_BOOST_PRICE_ID'),
+    ],
 ];

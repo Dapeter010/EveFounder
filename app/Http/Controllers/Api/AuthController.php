@@ -574,6 +574,181 @@ class AuthController extends Controller
         ]);
     }
 
+    /**
+     * Send password reset code via email
+     */
+    public function forgotPassword(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => implode(", ", $validator->errors()->all()),
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $email = $request->email;
+
+        // Check if user exists
+        $user = User::where('email', $email)->first();
+
+        if (!$user) {
+            // For security, don't reveal if email exists
+            return response()->json([
+                'success' => true,
+                'message' => 'If an account exists with this email, you will receive a password reset code shortly.'
+            ]);
+        }
+
+        // Rate limiting - 3 requests per 15 minutes per email
+        $key = 'password-reset:' . $email;
+        if (RateLimiter::tooManyAttempts($key, 3)) {
+            $seconds = RateLimiter::availableIn($key);
+            return response()->json([
+                'success' => false,
+                'message' => 'Too many password reset attempts. Please try again in ' . ceil($seconds / 60) . ' minutes.',
+                'errors' => [
+                    'email' => ['Rate limit exceeded']
+                ]
+            ], 429);
+        }
+
+        RateLimiter::hit($key, 900); // 15 minutes
+
+        // Generate 6-digit reset code
+        $resetCode = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $token = hash('sha256', $resetCode);
+
+        // Delete old tokens for this email
+        DB::table('password_reset_tokens')
+            ->where('email', $email)
+            ->delete();
+
+        // Store new token (expires in 1 hour)
+        DB::table('password_reset_tokens')->insert([
+            'email' => $email,
+            'token' => $token,
+            'created_at' => now(),
+        ]);
+
+        // TODO: Queue email job
+        // For now, log the code (REMOVE IN PRODUCTION)
+        Log::info('Password Reset Code', [
+            'email' => $email,
+            'code' => $resetCode,
+            'expires_at' => now()->addHour()->toDateTimeString()
+        ]);
+
+        // In production, send email via queue:
+        // Mail::to($email)->queue(new PasswordResetMail($resetCode));
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password reset code sent to your email',
+            'data' => [
+                'email' => $email,
+                'expires_in_minutes' => 60,
+                // REMOVE IN PRODUCTION - for testing only
+                'reset_code' => config('app.debug') ? $resetCode : null
+            ]
+        ]);
+    }
+
+    /**
+     * Reset password using code
+     */
+    public function resetPassword(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email|max:255',
+            'code' => 'required|string|size:6',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => implode(", ", $validator->errors()->all()),
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $email = $request->email;
+        $code = $request->code;
+        $token = hash('sha256', $code);
+
+        // Get reset token
+        $resetToken = DB::table('password_reset_tokens')
+            ->where('email', $email)
+            ->where('token', $token)
+            ->first();
+
+        if (!$resetToken) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid or expired reset code',
+                'errors' => [
+                    'code' => ['The reset code is invalid']
+                ]
+            ], 422);
+        }
+
+        // Check if token expired (1 hour)
+        if (now()->diffInMinutes($resetToken->created_at) > 60) {
+            DB::table('password_reset_tokens')
+                ->where('email', $email)
+                ->delete();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Reset code has expired. Please request a new one.',
+                'errors' => [
+                    'code' => ['Reset code expired']
+                ]
+            ], 422);
+        }
+
+        // Update user password
+        $user = User::where('email', $email)->first();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not found',
+                'errors' => [
+                    'email' => ['User not found']
+                ]
+            ], 404);
+        }
+
+        $user->update([
+            'password' => Hash::make($request->password)
+        ]);
+
+        // Delete used token
+        DB::table('password_reset_tokens')
+            ->where('email', $email)
+            ->delete();
+
+        // Revoke all existing tokens (force re-login)
+        $user->tokens()->delete();
+
+        // Clear rate limiter
+        RateLimiter::clear('password-reset:' . $email);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password reset successfully. Please login with your new password.',
+            'data' => [
+                'email' => $email
+            ]
+        ]);
+    }
+
     public function authReverb(Request $request): JsonResponse
     {
         $user = $request->user();

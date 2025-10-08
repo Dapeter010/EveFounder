@@ -35,6 +35,7 @@ class User extends Authenticatable
         'relationship_type',
         'fcm_token',
         'notification_settings',
+        'stripe_customer_id',
     ];
 
     protected $hidden = [
