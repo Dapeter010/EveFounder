@@ -187,7 +187,7 @@ class SubscriptionController extends Controller
 
         // Create Stripe Payment Intent
         try {
-            Stripe::setApiKey(config('services.stripe.secret'));
+            Stripe::setApiKey(config('services.stripe.key'));
 
             // Get or create Stripe customer
             $customer = null;
