@@ -154,10 +154,7 @@ class MatchController extends Controller
         $likes = Like::where('liked_id', $user->id)
             ->where('status', 'pending')
             ->with([
-                'liker' => function ($query) {
-                    $query->select('id', 'user_id', 'first_name', 'last_name', 'date_of_birth', 'location',
-                                   'bio', 'occupation', 'interests', 'height', 'education', 'relationship_goals');
-                },
+                'liker',
                 'liker.photos' => function ($query) {
                     $query->orderBy('order', 'asc');
                 }
@@ -205,10 +202,7 @@ class MatchController extends Controller
 
         $likes = Like::where('liker_id', $user->id)
             ->with([
-                'liked' => function ($query) {
-                    $query->select('id', 'user_id', 'first_name', 'last_name', 'date_of_birth', 'location',
-                                   'bio', 'occupation', 'interests', 'height', 'education', 'relationship_goals');
-                },
+                'liked',
                 'liked.photos' => function ($query) {
                     $query->orderBy('order', 'asc');
                 }
