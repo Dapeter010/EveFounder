@@ -155,7 +155,8 @@ class MatchController extends Controller
             ->where('status', 'pending')
             ->with([
                 'liker' => function ($query) {
-                    $query->select('id', 'user_id', 'first_name', 'last_name', 'date_of_birth', 'location');
+                    $query->select('id', 'user_id', 'first_name', 'last_name', 'date_of_birth', 'location',
+                                   'bio', 'occupation', 'interests', 'height', 'education', 'relationship_goals');
                 },
                 'liker.photos' => function ($query) {
                     $query->orderBy('order', 'asc');
@@ -174,6 +175,14 @@ class MatchController extends Controller
             } else {
                 $like->photos = [];
             }
+
+            // Parse interests if they exist
+            if ($like->liker->interests) {
+                $like->liker->interests = is_string($like->liker->interests)
+                    ? json_decode($like->liker->interests, true) ?? []
+                    : $like->liker->interests;
+            }
+
             return $like;
         })->values(); // Re-index the collection
 
@@ -197,7 +206,8 @@ class MatchController extends Controller
         $likes = Like::where('liker_id', $user->id)
             ->with([
                 'liked' => function ($query) {
-                    $query->select('id', 'user_id', 'first_name', 'last_name', 'date_of_birth', 'location');
+                    $query->select('id', 'user_id', 'first_name', 'last_name', 'date_of_birth', 'location',
+                                   'bio', 'occupation', 'interests', 'height', 'education', 'relationship_goals');
                 },
                 'liked.photos' => function ($query) {
                     $query->orderBy('order', 'asc');
@@ -216,6 +226,13 @@ class MatchController extends Controller
                 $like->photos = $like->liked->photos->pluck('photo_url')->toArray();
             } else {
                 $like->photos = [];
+            }
+
+            // Parse interests if they exist
+            if ($like->liked->interests) {
+                $like->liked->interests = is_string($like->liked->interests)
+                    ? json_decode($like->liked->interests, true) ?? []
+                    : $like->liked->interests;
             }
 
             return $like;
