@@ -15,6 +15,7 @@ use Stripe\Customer;
 use Stripe\EphemeralKey;
 use Stripe\PaymentIntent;
 use Stripe\Stripe;
+use Stripe\Checkout\Session as StripeSession;
 
 class BoostController extends Controller
 {
@@ -159,7 +160,6 @@ class BoostController extends Controller
                 'message' => 'You already have an active boost. Please wait until it expires before purchasing another.'
             ], 400);
         }
-        Log::info("got to A");
         $boostId = $request->boost_id;
         $boostOptions = $this->getBoostOptions();
         $boostConfig = $boostOptions[$boostId];
@@ -184,19 +184,54 @@ class BoostController extends Controller
             'status' => 'pending',
         ]);
 
-        // Call Supabase Edge Function to create Stripe checkout session
+        // Create Stripe checkout session directly in Laravel
         try {
-            Log::info("got to B");
+            Stripe::setApiKey(config('services.stripe.secret'));
 
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . env('SUPABASE_ANON_KEY'),
-                'Content-Type' => 'application/json',
-            ])->post(env('SUPABASE_URL') . '/functions/v1/stripe-checkout', [
-                'boost_id' => $boostId,
-                'price_id' => $boostConfig['stripe_price_id'],
+            // Get or create Stripe customer
+            $customer = null;
+            if ($user->stripe_customer_id) {
+                try {
+                    $customer = Customer::retrieve($user->stripe_customer_id);
+                } catch (\Exception $e) {
+                    Log::warning('Failed to retrieve Stripe customer', [
+                        'stripe_customer_id' => $user->stripe_customer_id,
+                        'error' => $e->getMessage()
+                    ]);
+                    $customer = null;
+                }
+            }
+
+            if (!$customer) {
+                $customer = Customer::create([
+                    'email' => $user->email,
+                    'name' => trim($user->first_name . ' ' . $user->last_name),
+                    'metadata' => [
+                        'user_id' => $user->uid,
+                        'user_email' => $user->email,
+                    ],
+                ]);
+
+                // Store customer ID in database
+                $user->update(['stripe_customer_id' => $customer->id]);
+
+                Log::info('Created Stripe customer', [
+                    'user_id' => $user->id,
+                    'stripe_customer_id' => $customer->id
+                ]);
+            }
+
+            // Create checkout session
+            $session = StripeSession::create([
+                'customer' => $customer->id,
+                'payment_method_types' => ['card'],
+                'line_items' => [[
+                    'price' => $boostConfig['stripe_price_id'],
+                    'quantity' => 1,
+                ]],
+                'mode' => 'payment',
                 'success_url' => $request->success_url . '?session_id={CHECKOUT_SESSION_ID}',
                 'cancel_url' => $request->cancel_url,
-                'mode' => 'payment', // One-time payment for boosts
                 'metadata' => [
                     'user_id' => $user->uid,
                     'user_email' => $user->email,
@@ -205,45 +240,35 @@ class BoostController extends Controller
                     'type' => 'boost_purchase'
                 ],
             ]);
-            Log::info("got to C");
 
-            if ($response->successful()) {
-                $data = $response->json();
+            // Store Stripe session ID for tracking
+            $pendingBoost->update([
+                'stripe_session_id' => $session->id
+            ]);
 
-                // Store Stripe session ID for tracking
-                $pendingBoost->update([
-                    'stripe_session_id' => $data['sessionId']
-                ]);
+            Log::info('Stripe checkout session created for boost', [
+                'session_id' => $session->id,
+                'user_id' => $user->id,
+                'boost_id' => $boostId,
+                'pending_boost_id' => $pendingBoost->id
+            ]);
 
-                return response()->json([
-                    'success' => true,
-                    'data' => [
-                        'session_id' => $data['sessionId'],
-                        'url' => $data['url'],
-                        'pending_boost_id' => $pendingBoost->id
-                    ]
-                ]);
-            } else {
-                // Clean up pending boost if Stripe session creation failed
-                $pendingBoost->delete();
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'sessionId' => $session->id,
+                    'url' => $session->url,
+                    'pending_boost_id' => $pendingBoost->id
+                ]
+            ]);
 
-                Log::error('Stripe checkout session creation failed', [
-                    'response' => $response->body(),
-                    'boost_id' => $boostId,
-                    'user_id' => $user->id
-                ]);
-
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to create checkout session'
-                ], 500);
-            }
         } catch (\Exception $e) {
             // Clean up pending boost on exception
             $pendingBoost->delete();
 
             Log::error('Exception creating Stripe checkout session', [
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
                 'boost_id' => $boostId,
                 'user_id' => $user->id
             ]);

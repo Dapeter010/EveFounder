@@ -16,6 +16,7 @@ use Stripe\Customer;
 use Stripe\EphemeralKey;
 use Stripe\PaymentIntent;
 use Stripe\Stripe;
+use Stripe\Checkout\Session as StripeSession;
 
 class SubscriptionController extends Controller
 {
@@ -85,63 +86,92 @@ class SubscriptionController extends Controller
             ], 401);
         }
 
-        // Call Supabase Edge Function to create Stripe checkout session
+        // Create Stripe checkout session directly in Laravel
         try {
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . env('SUPABASE_ANON_KEY'),
-                'Content-Type' => 'application/json',
-            ])->post(env('SUPABASE_URL') . '/functions/v1/stripe-checkout', [
-                'price_id' => $request->price_id,
-                'success_url' => $request->success_url,
-                'cancel_url' => $request->cancel_url,
+            Stripe::setApiKey(config('services.stripe.secret'));
+
+            // Get or create Stripe customer
+            $customer = null;
+            if ($user->stripe_customer_id) {
+                try {
+                    $customer = Customer::retrieve($user->stripe_customer_id);
+                } catch (\Exception $e) {
+                    Log::warning('Failed to retrieve Stripe customer', [
+                        'stripe_customer_id' => $user->stripe_customer_id,
+                        'error' => $e->getMessage()
+                    ]);
+                    $customer = null;
+                }
+            }
+
+            if (!$customer) {
+                $customer = Customer::create([
+                    'email' => $user->email,
+                    'name' => trim($user->first_name . ' ' . $user->last_name),
+                    'metadata' => [
+                        'user_id' => $user->uid,
+                        'user_email' => $user->email,
+                    ],
+                ]);
+
+                // Store customer ID in database
+                $user->update(['stripe_customer_id' => $customer->id]);
+
+                Log::info('Created Stripe customer', [
+                    'user_id' => $user->id,
+                    'stripe_customer_id' => $customer->id
+                ]);
+            }
+
+            // Create checkout session
+            $sessionParams = [
+                'customer' => $customer->id,
+                'payment_method_types' => ['card'],
+                'line_items' => [[
+                    'price' => $request->price_id,
+                    'quantity' => 1,
+                ]],
                 'mode' => $request->mode,
+                'success_url' => $request->success_url . '?session_id={CHECKOUT_SESSION_ID}',
+                'cancel_url' => $request->cancel_url,
                 'metadata' => [
                     'user_id' => $user->uid,
                     'user_email' => $user->email,
                     'type' => $request->mode === 'subscription' ? 'subscription_purchase' : 'one_time_payment'
                 ],
+            ];
+
+            // For subscription mode, add subscription-specific params
+            if ($request->mode === 'subscription') {
+                $sessionParams['subscription_data'] = [
+                    'metadata' => [
+                        'user_id' => $user->uid,
+                        'user_email' => $user->email,
+                    ]
+                ];
+            }
+
+            $session = StripeSession::create($sessionParams);
+
+            Log::info('Stripe checkout session created', [
+                'session_id' => $session->id,
+                'user_id' => $user->id,
+                'mode' => $request->mode,
+                'price_id' => $request->price_id
             ]);
 
-            if ($response->successful()) {
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'sessionId' => $session->id,
+                    'url' => $session->url
+                ]
+            ]);
 
-
-//            // Create or update subscription
-//            $subscription = Subscription::updateOrCreate(
-//                ['user_id' => $user->id],
-//                [
-//                    'plan_type' => $planType,
-//                    'status' => 'active',
-//                    'amount' => $amount,
-//                    'currency' => 'GBP',
-//                    'stripe_subscription_id' => 'sub_mock_' . uniqid(),
-//                    'starts_at' => now(),
-//                    'ends_at' => now()->addMonth(),
-//                ]
-//            );
-
-                $data = $response->json();
-                return response()->json([
-                    'success' => true,
-                    'data' => [
-                        'sessionId' => $data['sessionId'],
-                        'url' => $data['url']
-                    ]
-                ]);
-            } else {
-                Log::error('Stripe checkout session creation failed', [
-                    'response' => $response->body(),
-                    'price_id' => $request->price_id,
-                    'user_id' => $user->id
-                ]);
-
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to create checkout session'
-                ], 500);
-            }
         } catch (\Exception $e) {
             Log::error('Exception creating Stripe checkout session', [
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
                 'price_id' => $request->price_id,
                 'user_id' => $user->id
             ]);
