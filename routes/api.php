@@ -63,6 +63,8 @@ Route::group(['middleware' => ['auth:sanctum']], function () {
     Route::get('/conversations', [MessageController::class, 'getConversations']);
     Route::get('/conversations/{matchId}/messages', [MessageController::class, 'getMessages']);
     Route::post('/conversations/{matchId}/messages', [MessageController::class, 'sendMessage'])->middleware('throttle:messaging');
+    Route::post('/conversations/{matchId}/messages/media', [MessageController::class, 'sendMediaMessage'])->middleware('throttle:uploads');
+    Route::post('/conversations/{matchId}/messages/{messageId}/viewed', [MessageController::class, 'markMediaAsViewed']);
     Route::put('/messages/{messageId}/read', [MessageController::class, 'markAsRead']);
     Route::delete('/messages/{messageId}', [MessageController::class, 'deleteMessage']);
     Route::get('/conversations/{matchId}/info', [MessageController::class, 'getConversationInfo']);

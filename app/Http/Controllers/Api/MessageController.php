@@ -15,6 +15,7 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 
 class MessageController extends Controller
@@ -157,8 +158,12 @@ class MessageController extends Controller
                     'match_id' => $message->match_id,
                     'sender_id' => $message->sender_id,
                     'receiver_id' => $message->receiver_id,
+                    'recipient_id' => $message->receiver_id,
                     'content' => $message->content,
                     'type' => $message->type,
+                    'media_url' => $message->media_url,
+                    'view_once' => $message->view_once ?? false,
+                    'viewed_at' => $message->viewed_at,
                     'read_at' => $message->read_at,
                     'is_deleted' => $message->is_deleted,
                     'created_at' => $message->created_at,
@@ -259,6 +264,140 @@ class MessageController extends Controller
                 'created_at' => $message->created_at,
                 'updated_at' => $message->updated_at,
             ]
+        ]);
+    }
+
+    public function sendMediaMessage(Request $request, $matchId): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'type' => 'required|in:image,video',
+            'media' => 'required|file|mimes:jpg,jpeg,png,gif,mp4,mov|max:51200', // Max 50MB
+            'view_once' => 'required|boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => implode(", ", $validator->errors()->all()),
+            ], 422);
+        }
+
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not authenticated'
+            ], 401);
+        }
+
+        // Verify user is part of this match
+        $match = DB::table('matches')
+            ->where('id', $matchId)
+            ->where(function ($query) use ($user) {
+                $query->where('user1_id', $user->id)
+                    ->orWhere('user2_id', $user->id);
+            })
+            ->where('is_active', true)
+            ->first();
+
+        if (!$match) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Match not found or access denied'
+            ], 404);
+        }
+
+        // Upload media file
+        $mediaFile = $request->file('media');
+        $mediaType = $request->input('type');
+        $viewOnce = $request->boolean('view_once');
+
+        // Store file in messages directory
+        $path = $mediaFile->store("messages/{$matchId}", 'public');
+        $mediaUrl = Storage::url($path);
+
+        // Determine receiver ID
+        $receiverId = $match->user1_id === $user->id ? $match->user2_id : $match->user1_id;
+
+        // Create message
+        $message = Message::create([
+            'match_id' => $matchId,
+            'sender_id' => $user->id,
+            'receiver_id' => $receiverId,
+            'content' => $viewOnce ? '🔒 View once media' : '📎 Media attachment',
+            'type' => $mediaType,
+            'media_url' => $mediaUrl,
+            'view_once' => $viewOnce,
+            'is_deleted' => false,
+        ]);
+
+        // Load the message with sender relationship for broadcasting
+        $message->load('sender');
+
+        // Broadcast the message
+        try {
+            broadcast(new MessageSent($message, $user));
+            Log::info('Media message broadcast successfully');
+        } catch (\Exception $e) {
+            Log::error('Failed to broadcast media message: ' . $e->getMessage());
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Media message sent successfully',
+            'data' => [
+                'id' => $message->id,
+                'match_id' => $message->match_id,
+                'sender_id' => $message->sender_id,
+                'receiver_id' => $message->receiver_id,
+                'recipient_id' => $message->receiver_id,
+                'content' => $message->content,
+                'type' => $message->type,
+                'media_url' => $message->media_url,
+                'view_once' => $message->view_once,
+                'viewed_at' => $message->viewed_at,
+                'read_at' => $message->read_at,
+                'created_at' => $message->created_at,
+                'updated_at' => $message->updated_at,
+            ]
+        ]);
+    }
+
+    public function markMediaAsViewed(Request $request, $matchId, $messageId): JsonResponse
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not authenticated'
+            ], 401);
+        }
+
+        // Find message and verify user is the receiver
+        $message = Message::where('id', $messageId)
+            ->where('match_id', $matchId)
+            ->where('receiver_id', $user->id)
+            ->where('view_once', true)
+            ->whereNull('viewed_at')
+            ->first();
+
+        if (!$message) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Message not found, already viewed, or not a view-once message'
+            ], 404);
+        }
+
+        // Mark as viewed
+        $message->update([
+            'viewed_at' => now()
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Media marked as viewed'
         ]);
     }
 
