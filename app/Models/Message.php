@@ -16,15 +16,20 @@ class Message extends Model
         'receiver_id',
         'content',
         'type',
+        'media_url',
+        'view_once',
+        'viewed_at',
         'read_at',
         'is_deleted'
     ];
 
     protected $casts = [
         'read_at' => 'datetime',
+        'viewed_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
-        'is_deleted' => 'boolean'
+        'is_deleted' => 'boolean',
+        'view_once' => 'boolean'
     ];
 
 

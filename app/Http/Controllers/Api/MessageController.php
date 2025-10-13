@@ -153,6 +153,13 @@ class MessageController extends Controller
             ->orderBy('created_at', 'asc')
             ->get()
             ->map(function ($message) {
+                // Convert relative storage URL to full URL
+                $mediaUrl = $message->media_url;
+                if ($mediaUrl && !filter_var($mediaUrl, FILTER_VALIDATE_URL)) {
+                    // If it's a relative path starting with /storage, convert to full URL
+                    $mediaUrl = url($mediaUrl);
+                }
+
                 return [
                     'id' => $message->id,
                     'match_id' => $message->match_id,
@@ -161,7 +168,7 @@ class MessageController extends Controller
                     'recipient_id' => $message->receiver_id,
                     'content' => $message->content,
                     'type' => $message->type,
-                    'media_url' => $message->media_url,
+                    'media_url' => $mediaUrl,
                     'view_once' => $message->view_once ?? false,
                     'viewed_at' => $message->viewed_at,
                     'read_at' => $message->read_at,
@@ -343,6 +350,12 @@ class MessageController extends Controller
             Log::error('Failed to broadcast media message: ' . $e->getMessage());
         }
 
+        // Convert relative storage URL to full URL
+        $mediaUrl = $message->media_url;
+        if ($mediaUrl && !filter_var($mediaUrl, FILTER_VALIDATE_URL)) {
+            $mediaUrl = url($mediaUrl);
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Media message sent successfully',
@@ -354,7 +367,7 @@ class MessageController extends Controller
                 'recipient_id' => $message->receiver_id,
                 'content' => $message->content,
                 'type' => $message->type,
-                'media_url' => $message->media_url,
+                'media_url' => $mediaUrl,
                 'view_once' => $message->view_once,
                 'viewed_at' => $message->viewed_at,
                 'read_at' => $message->read_at,
