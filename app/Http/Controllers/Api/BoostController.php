@@ -364,8 +364,9 @@ class BoostController extends Controller
                 'description' => $boostConfig['name'],
                 'metadata' => [
                     'user_id' => $user->uid,
+                    'boost_id' => $boostId,
                     'boost_type' => $boostId,
-                    'type' => 'boost',
+                    'type' => 'boost_purchase',
                 ],
                 'automatic_payment_methods' => [
                     'enabled' => true,

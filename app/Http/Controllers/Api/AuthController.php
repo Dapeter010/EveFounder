@@ -328,7 +328,7 @@ class AuthController extends Controller
             ], 404);
         }
 
-        $userData = $user->load('photos', 'userProfile', 'subscription')->toArray();
+        $userData = $user->load('photos', 'userProfile', 'subscription', 'profileBoosts')->toArray();
 
         // Map snake_case to camelCase
         $userData['firstName'] = $userData['first_name'] ?? null;
@@ -340,7 +340,11 @@ class AuthController extends Controller
         $userData['photos'] = $userData['photos'] ?? [];
         $userData['images'] = $userData['photos'];
 
-        // Optionally remove the old snake_case keys if frontend doesn’t need them
+        // Add online status and premium flag
+        $userData['is_online'] = $user->isOnline();
+        $userData['is_premium'] = $user->isPremium();
+
+        // Optionally remove the old snake_case keys if frontend doesn't need them
 //        unset($userData['first_name'], $userData['last_name']);
 
         return response()->json([

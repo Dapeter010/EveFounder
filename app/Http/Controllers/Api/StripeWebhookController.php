@@ -103,6 +103,11 @@ class StripeWebhookController extends Controller
             return $this->handleBoostPayment($paymentIntent, $metadata);
         }
 
+        // Handle subscription purchases via Payment Intent (mobile app)
+        if (isset($metadata->type) && $metadata->type === 'subscription') {
+            return $this->handleSubscriptionPayment($paymentIntent, $metadata);
+        }
+
         return ['success' => true, 'message' => 'Payment intent processed'];
     }
 
@@ -300,10 +305,14 @@ class StripeWebhookController extends Controller
     protected function handleBoostPayment($paymentIntent, $metadata): array
     {
         $userId = $metadata->user_id ?? null;
-        $boostId = $metadata->boost_id ?? null;
+        $boostId = $metadata->boost_id ?? $metadata->boost_type ?? null;
         $pendingBoostId = $metadata->pending_boost_id ?? null;
 
         if (!$userId || !$boostId) {
+            Log::error('Missing boost payment metadata', [
+                'payment_intent_id' => $paymentIntent->id,
+                'metadata' => $metadata
+            ]);
             return ['success' => false, 'message' => 'Missing metadata'];
         }
 
@@ -325,6 +334,10 @@ class StripeWebhookController extends Controller
             ->first();
 
         if ($activeBoost) {
+            Log::warning('User already has active boost', [
+                'user_id' => $userId,
+                'active_boost_id' => $activeBoost->id
+            ]);
             return ['success' => false, 'message' => 'User already has active boost'];
         }
 
@@ -332,9 +345,26 @@ class StripeWebhookController extends Controller
         $startsAt = now();
         $endsAt = $startsAt->copy()->addMinutes($boostConfig['duration']);
 
-        ProfileBoost::updateOrCreate(
-            ['id' => $pendingBoostId],
-            [
+        // For mobile Payment Intent flow, create new boost (no pending boost)
+        // For web Checkout Session flow, update existing pending boost
+        $boost = $pendingBoostId
+            ? ProfileBoost::updateOrCreate(
+                ['id' => $pendingBoostId],
+                [
+                    'user_id' => $userId,
+                    'boost_type' => $boostId,
+                    'cost' => $boostConfig['price'],
+                    'starts_at' => $startsAt,
+                    'ends_at' => $endsAt,
+                    'status' => 'active',
+                    'stripe_payment_intent_id' => $paymentIntent->id,
+                    'payment_completed_at' => now(),
+                    'views_gained' => 0,
+                    'likes_gained' => 0,
+                    'matches_gained' => 0,
+                ]
+            )
+            : ProfileBoost::create([
                 'user_id' => $userId,
                 'boost_type' => $boostId,
                 'cost' => $boostConfig['price'],
@@ -346,16 +376,77 @@ class StripeWebhookController extends Controller
                 'views_gained' => 0,
                 'likes_gained' => 0,
                 'matches_gained' => 0,
+            ]);
+
+        Log::info('Boost activated from payment intent', [
+            'user_id' => $userId,
+            'boost_id' => $boost->id,
+            'boost_type' => $boostId,
+            'payment_intent_id' => $paymentIntent->id
+        ]);
+
+        // Send boost activation email
+        Mail::to($user->email)->queue(new BoostActivated($user, $boost));
+
+        return ['success' => true, 'message' => 'Boost activated', 'boost_id' => $boost->id];
+    }
+
+    /**
+     * Handle subscription payment from payment intent (mobile app)
+     */
+    protected function handleSubscriptionPayment($paymentIntent, $metadata): array
+    {
+        $userId = $metadata->user_id ?? null;
+        $planType = $metadata->plan_type ?? 'basic';
+
+        if (!$userId) {
+            Log::error('Missing subscription payment metadata', [
+                'payment_intent_id' => $paymentIntent->id,
+                'metadata' => $metadata
+            ]);
+            return ['success' => false, 'message' => 'Missing user ID'];
+        }
+
+        $user = User::find($userId);
+        if (!$user) {
+            return ['success' => false, 'message' => 'User not found'];
+        }
+
+        // Get subscription configuration
+        [$cost, $name] = match ($planType) {
+            'basic' => [9.99, 'Basic Subscription'],
+            'premium' => [19.99, 'Premium Subscription'],
+            default => [9.99, 'Basic Subscription'],
+        };
+
+        // Create or update subscription record
+        $startsAt = now();
+        $endsAt = $startsAt->copy()->addMonth();
+
+        $subscription = Subscription::updateOrCreate(
+            ['user_id' => $userId],
+            [
+                'plan_type' => $planType,
+                'status' => 'active',
+                'amount' => $cost,
+                'currency' => 'GBP',
+                'stripe_payment_intent_id' => $paymentIntent->id,
+                'starts_at' => $startsAt,
+                'ends_at' => $endsAt,
             ]
         );
 
-        // Send boost activation email
-        $activatedBoost = ProfileBoost::where('stripe_payment_intent_id', $paymentIntent->id)->first();
-        if ($activatedBoost) {
-            Mail::to($user->email)->queue(new BoostActivated($user, $activatedBoost));
-        }
+        Log::info('Subscription activated from payment intent', [
+            'user_id' => $userId,
+            'subscription_id' => $subscription->id,
+            'plan_type' => $planType,
+            'payment_intent_id' => $paymentIntent->id
+        ]);
 
-        return ['success' => true, 'message' => 'Boost activated'];
+        // Send subscription activation email
+        Mail::to($user->email)->queue(new SubscriptionCreated($user, $subscription));
+
+        return ['success' => true, 'message' => 'Subscription activated', 'subscription_id' => $subscription->id];
     }
 
     /**
