@@ -26,7 +26,7 @@ use App\Http\Controllers\Api\PaymentMethodController;
 // Public routes
 Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:register');
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
-Route::post('/auth/send-verification-code', [AuthController::class, 'sendEmailVerificationCode'])->middleware('throttle:auth');
+Route::post('/auth/send-verification-code', [AuthController::class, 'sendEmailVerificationCode']);
 Route::post('/auth/verify-email-code', [AuthController::class, 'verifyEmailCode'])->middleware('throttle:auth');
 Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:auth');
 Route::post('/auth/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:auth');
