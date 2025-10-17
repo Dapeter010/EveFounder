@@ -340,9 +340,10 @@ class AuthController extends Controller
         $userData['photos'] = $userData['photos'] ?? [];
         $userData['images'] = $userData['photos'];
 
-        // Add online status and premium flag
+        // Add online status, premium flag, and admin status
         $userData['is_online'] = $user->isOnline();
         $userData['is_premium'] = $user->isPremium();
+        $userData['is_admin'] = $user->isAdmin();
 
         // Optionally remove the old snake_case keys if frontend doesn't need them
 //        unset($userData['first_name'], $userData['last_name']);

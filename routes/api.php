@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\VerificationController;
 use App\Http\Controllers\Api\SubscriptionController;
 use App\Http\Controllers\Api\MobileNotificationController;
 use App\Http\Controllers\Api\PaymentMethodController;
+use App\Http\Controllers\Api\PromoCodeController;
 
 /*
 |--------------------------------------------------------------------------
@@ -126,6 +127,9 @@ Route::group(['middleware' => ['auth:sanctum']], function () {
     Route::put('/notifications/settings', [MobileNotificationController::class, 'updateSettings']);
     Route::get('/notifications/settings', [MobileNotificationController::class, 'getSettings']);
 
+    // Promo codes
+    Route::post('/promo-codes/validate', [PromoCodeController::class, 'validate']);
+
     // Admin routes
     Route::prefix('admin')->group(function () { // In real app: add admin middleware
         Route::get('/dashboard', [AdminController::class, 'dashboard']);
@@ -142,6 +146,15 @@ Route::group(['middleware' => ['auth:sanctum']], function () {
         Route::put('/settings', [AdminController::class, 'updateSettings']);
         Route::post('/notifications', [AdminController::class, 'sendNotification']);
         Route::get('/export/users', [AdminController::class, 'exportUsers']);
+
+        // Promo codes
+        Route::get('/promo-codes', [PromoCodeController::class, 'index']);
+        Route::post('/promo-codes', [PromoCodeController::class, 'store']);
+        Route::get('/promo-codes/stats', [PromoCodeController::class, 'stats']);
+        Route::get('/promo-codes/{id}', [PromoCodeController::class, 'show']);
+        Route::put('/promo-codes/{id}', [PromoCodeController::class, 'update']);
+        Route::delete('/promo-codes/{id}', [PromoCodeController::class, 'destroy']);
+        Route::post('/promo-codes/{id}/toggle', [PromoCodeController::class, 'toggleActive']);
     });
 });
 

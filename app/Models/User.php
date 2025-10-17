@@ -26,6 +26,7 @@ class User extends Authenticatable
         'interests',
         'is_verified',
         'is_active',
+        'is_admin',
         'last_active_at',
         'latitude',
         'longitude',
@@ -50,6 +51,7 @@ class User extends Authenticatable
         'interests' => 'array',
         'is_verified' => 'boolean',
         'is_active' => 'boolean',
+        'is_admin' => 'boolean',
         'latitude' => 'decimal:8',
         'longitude' => 'decimal:8',
         'notification_settings' => 'array',
@@ -159,6 +161,11 @@ class User extends Authenticatable
     public function isOnline(): bool
     {
         return $this->last_active_at && $this->last_active_at->diffInMinutes(now()) <= 15;
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->is_admin === true;
     }
 
     public function distanceFrom(User $user): float

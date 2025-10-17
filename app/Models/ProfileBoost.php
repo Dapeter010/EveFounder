@@ -14,6 +14,9 @@ class ProfileBoost extends Model
         'user_id',
         'boost_type',
         'cost',
+        'promo_code_id',
+        'original_cost',
+        'discount_amount',
         'starts_at',
         'ends_at',
         'views_gained',
@@ -24,6 +27,8 @@ class ProfileBoost extends Model
 
     protected $casts = [
         'cost' => 'decimal:2',
+        'original_cost' => 'decimal:2',
+        'discount_amount' => 'decimal:2',
         'starts_at' => 'datetime',
         'ends_at' => 'datetime',
     ];
@@ -31,6 +36,11 @@ class ProfileBoost extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(UserProfile::class, 'user_id', 'user_id');
+    }
+
+    public function promoCode(): BelongsTo
+    {
+        return $this->belongsTo(PromoCode::class);
     }
 
     public function isActive(): bool

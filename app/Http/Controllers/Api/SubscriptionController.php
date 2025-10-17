@@ -68,7 +68,8 @@ class SubscriptionController extends Controller
             'success_url' => 'required|url',
             'cancel_url' => 'required|url',
             'mode' => 'required|in:payment,subscription',
-            'metadata' => 'sometimes|array' // Accept but ignore - we build our own from auth user
+            'metadata' => 'sometimes|array', // Accept but ignore - we build our own from auth user
+            'promo_code' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -84,6 +85,22 @@ class SubscriptionController extends Controller
                 'success' => false,
                 'message' => 'User not authenticated'
             ], 401);
+        }
+
+        // Handle promo code if provided
+        $promoCode = null;
+        if ($request->promo_code) {
+            $promoCode = \App\Models\PromoCode::where('code', strtoupper($request->promo_code))
+                ->active()
+                ->applicableTo('subscription')
+                ->first();
+
+            if (!$promoCode || !$promoCode->canBeUsedBy($user->id)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid or expired promo code',
+                ], 400);
+            }
         }
 
         // Create Stripe checkout session directly in Laravel
@@ -137,9 +154,17 @@ class SubscriptionController extends Controller
                 'metadata' => [
                     'user_id' => $user->uid,
                     'user_email' => $user->email,
-                    'type' => $request->mode === 'subscription' ? 'subscription_purchase' : 'one_time_payment'
+                    'type' => $request->mode === 'subscription' ? 'subscription_purchase' : 'one_time_payment',
+                    'promo_code_id' => $promoCode ? $promoCode->id : null,
+                    'promo_code' => $promoCode ? $promoCode->code : null,
                 ],
             ];
+
+            // Apply promo code discount if provided (via coupon in Stripe or manual calculation)
+            if ($promoCode) {
+                $sessionParams['metadata']['has_promo_code'] = 'true';
+                // Note: Actual discount application happens in webhook after payment
+            }
 
             // For subscription mode, add subscription-specific params
             if ($request->mode === 'subscription') {

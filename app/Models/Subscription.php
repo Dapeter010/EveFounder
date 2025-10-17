@@ -18,6 +18,9 @@ class Subscription extends Model
         'currency',
         'price_id',
         'stripe_subscription_id',
+        'promo_code_id',
+        'original_amount',
+        'discount_amount',
         'starts_at',
         'ends_at',
         'cancelled_at',
@@ -25,6 +28,8 @@ class Subscription extends Model
 
     protected $casts = [
         'amount' => 'decimal:2',
+        'original_amount' => 'decimal:2',
+        'discount_amount' => 'decimal:2',
         'starts_at' => 'datetime',
         'ends_at' => 'datetime',
         'cancelled_at' => 'datetime',
@@ -33,6 +38,11 @@ class Subscription extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function promoCode(): BelongsTo
+    {
+        return $this->belongsTo(PromoCode::class);
     }
 
     public function isActive(): bool
