@@ -7,11 +7,11 @@ use App\Events\CallDeclined;
 use App\Events\CallEnded;
 use App\Events\CallInitiated;
 use App\Events\WebRTCSignal;
-use App\Http\Controllers\Controller;
 use App\Models\Call;
 use App\Models\CallEvent;
 use App\Models\Matcher;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
