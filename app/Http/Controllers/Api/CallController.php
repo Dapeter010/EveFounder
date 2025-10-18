@@ -31,12 +31,12 @@ class CallController extends Controller
         $match = Matcher::findOrFail($validated['match_id']);
 
         // Verify the match belongs to the user
-        if ($match->user_id !== $user->id && $match->matched_user_id !== $user->id) {
+        if ($match->user1_id !== $user->id && $match->user2_id !== $user->id) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
         // Determine receiver
-        $receiverId = $match->user_id === $user->id ? $match->matched_user_id : $match->user_id;
+        $receiverId = $match->user1_id === $user->id ? $match->user2_id : $match->user1_id;
 
         // Check if receiver has blocked the caller (dark mode privacy)
         $receiver = \App\Models\User::find($receiverId);
@@ -249,7 +249,7 @@ class CallController extends Controller
         $match = Matcher::findOrFail($matchId);
 
         // Verify the match belongs to the user
-        if ($match->user_id !== $user->id && $match->matched_user_id !== $user->id) {
+        if ($match->user1_id !== $user->id && $match->user2_id !== $user->id) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
