@@ -246,7 +246,7 @@ class CallController extends Controller
     public function activeCall(Request $request, $matchId)
     {
         $user = Auth::user();
-        $match = Match::findOrFail($matchId);
+        $match = Matcher::findOrFail($matchId);
 
         // Verify the match belongs to the user
         if ($match->user_id !== $user->id && $match->matched_user_id !== $user->id) {
