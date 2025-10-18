@@ -193,4 +193,40 @@ class User extends Authenticatable
 
         return $earthRadius * $c;
     }
+
+    /**
+     * Check if this user has blocked another user.
+     */
+    public function hasBlocked(int $userId): bool
+    {
+        return BlockedUser::where('blocker_id', $this->id)
+            ->where('blocked_id', $userId)
+            ->exists();
+    }
+
+    /**
+     * Check if this user is blocked by another user.
+     */
+    public function isBlockedBy(int $userId): bool
+    {
+        return BlockedUser::where('blocker_id', $userId)
+            ->where('blocked_id', $this->id)
+            ->exists();
+    }
+
+    /**
+     * Relationship: Users blocked by this user.
+     */
+    public function blockedUsers(): HasMany
+    {
+        return $this->hasMany(BlockedUser::class, 'blocker_id');
+    }
+
+    /**
+     * Relationship: Users who have blocked this user.
+     */
+    public function blockedByUsers(): HasMany
+    {
+        return $this->hasMany(BlockedUser::class, 'blocked_id');
+    }
 }
