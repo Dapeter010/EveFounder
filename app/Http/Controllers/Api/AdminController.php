@@ -108,8 +108,64 @@ class AdminController extends Controller
             });
         }
 
-        $users = $query->orderBy('created_at', 'desc')
+        $users = $query->with(['subscription', 'photos'])
+            ->orderBy('created_at', 'desc')
             ->paginate($request->get('per_page', 20));
+
+        // Transform user data to match frontend expectations
+        $users->getCollection()->transform(function ($user) {
+            // Get user stats
+            $matchesCount = DB::table('matches')
+                ->where(function ($query) use ($user) {
+                    $query->where('user1_id', $user->id)
+                          ->orWhere('user2_id', $user->id);
+                })
+                ->count();
+
+            $messagesSent = DB::table('messages')->where('sender_id', $user->id)->count();
+            $profileViews = ProfileView::where('viewed_id', $user->id)->count();
+            $likesSent = Like::where('liker_id', $user->id)->count();
+            $likesReceived = Like::where('liked_id', $user->id)->count();
+            $reportsAgainst = Report::where('reported_id', $user->id)->count();
+
+            // Calculate age from date_of_birth
+            $age = $user->date_of_birth ? now()->diffInYears($user->date_of_birth) : 0;
+
+            // Get subscription info
+            $subscription = $user->subscription;
+            $subscriptionPlan = $subscription ? $subscription->plan_type : 'none';
+            $totalSpent = ProfileBoost::where('user_id', $user->id)->sum('cost');
+
+            // Format last active
+            $lastActive = $user->last_active_at
+                ? $user->last_active_at->diffForHumans()
+                : 'Never';
+
+            return [
+                'id' => $user->id,
+                'name' => trim($user->first_name . ' ' . $user->last_name),
+                'email' => $user->email,
+                'age' => $age,
+                'location' => $user->location ?? 'Unknown',
+                'status' => $user->is_active ? 'active' : 'inactive',
+                'subscription' => $subscriptionPlan,
+                'joined' => $user->created_at->format('Y-m-d'),
+                'last_active' => $lastActive,
+                'verified' => $user->is_verified ?? false,
+                'dark_mode_enabled' => $user->dark_mode_enabled ?? false,
+                'total_matches' => $matchesCount,
+                'total_messages' => $messagesSent,
+                'reports_against' => $reportsAgainst,
+                'profile_views' => $profileViews,
+                'likes_sent' => $likesSent,
+                'likes_received' => $likesReceived,
+                'photos_count' => $user->photos->count(),
+                'bio_length' => strlen($user->bio ?? ''),
+                'phone' => $user->phone ?? 'N/A',
+                'subscription_start' => $subscription ? $subscription->created_at->format('Y-m-d') : null,
+                'total_spent' => '£' . number_format($totalSpent / 100, 2),
+            ];
+        });
 
         return response()->json([
             'success' => true,
