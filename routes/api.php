@@ -17,6 +17,8 @@ use App\Http\Controllers\Api\SubscriptionController;
 use App\Http\Controllers\Api\MobileNotificationController;
 use App\Http\Controllers\Api\PaymentMethodController;
 use App\Http\Controllers\Api\PromoCodeController;
+use App\Http\Controllers\Api\DarkModeSettingsController;
+use App\Http\Controllers\Api\CallController;
 
 /*
 |--------------------------------------------------------------------------
@@ -130,6 +132,21 @@ Route::group(['middleware' => ['auth:sanctum']], function () {
     // Promo codes
     Route::post('/promo-codes/validate', [PromoCodeController::class, 'validate']);
 
+    // Dark Mode Settings
+    Route::get('/dark-mode/settings', [DarkModeSettingsController::class, 'getSettings']);
+    Route::put('/dark-mode/settings', [DarkModeSettingsController::class, 'updateSettings']);
+    Route::post('/dark-mode/settings/reset', [DarkModeSettingsController::class, 'resetSettings']);
+
+    // Call routes
+    Route::post('/calls/initiate', [CallController::class, 'initiate']);
+    Route::post('/calls/{callId}/accept', [CallController::class, 'accept']);
+    Route::post('/calls/{callId}/decline', [CallController::class, 'decline']);
+    Route::post('/calls/{callId}/end', [CallController::class, 'end']);
+    Route::post('/calls/{callId}/signal', [CallController::class, 'signal']);
+    Route::get('/calls/history', [CallController::class, 'history']);
+    Route::get('/calls/{callId}', [CallController::class, 'show']);
+    Route::get('/matches/{matchId}/active-call', [CallController::class, 'activeCall']);
+
     // Admin routes
     Route::prefix('admin')->group(function () { // In real app: add admin middleware
         Route::get('/dashboard', [AdminController::class, 'dashboard']);
@@ -146,6 +163,7 @@ Route::group(['middleware' => ['auth:sanctum']], function () {
         Route::put('/settings', [AdminController::class, 'updateSettings']);
         Route::post('/notifications', [AdminController::class, 'sendNotification']);
         Route::get('/export/users', [AdminController::class, 'exportUsers']);
+        Route::post('/users/{userId}/toggle-dark-mode', [AdminController::class, 'toggleDarkMode']);
 
         // Promo codes
         Route::get('/promo-codes', [PromoCodeController::class, 'index']);

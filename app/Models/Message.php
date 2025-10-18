@@ -20,16 +20,20 @@ class Message extends Model
         'view_once',
         'viewed_at',
         'read_at',
-        'is_deleted'
+        'is_deleted',
+        'expires_at',
+        'auto_delete_after_read'
     ];
 
     protected $casts = [
         'read_at' => 'datetime',
         'viewed_at' => 'datetime',
+        'expires_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'is_deleted' => 'boolean',
-        'view_once' => 'boolean'
+        'view_once' => 'boolean',
+        'auto_delete_after_read' => 'boolean'
     ];
 
 

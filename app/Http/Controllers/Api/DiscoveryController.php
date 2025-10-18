@@ -45,10 +45,17 @@ class DiscoveryController extends Controller
         ->toArray();
     $excludedUserIds[] = $user->id;
 
-    $query = User::with(['photos', 'userProfile'])
+    $query = User::with(['photos', 'userProfile', 'darkModeSettings'])
         ->whereNotIn('id', $excludedUserIds)
         ->where('is_active', true)
-        ->where('is_verified', true);
+        ->where('is_verified', true)
+        // Exclude users with invisible mode enabled
+        ->where(function ($q) {
+            $q->where('dark_mode_enabled', false)
+              ->orWhereDoesntHave('darkModeSettings', function ($subQuery) {
+                  $subQuery->where('invisible_mode', true);
+              });
+        });
 
     // Age filter
     $minAge = $request->has('min_age') ? $request->min_age : $userProfile->preferred_age_range['min'] ?? null;
@@ -181,7 +188,26 @@ class DiscoveryController extends Controller
 
         $age = Carbon::parse($user->date_of_birth)->age;
 
-        $distance = isset($user->distance) ? round($user->distance, 1) . ' miles away' : $profile->location;
+        // Apply location obfuscation if user has it enabled
+        $displayDistance = $profile->location;
+        $displayDistanceMiles = null;
+
+        if (isset($user->distance)) {
+            // Check if user has location obfuscation enabled
+            if ($user->dark_mode_enabled && $user->darkModeSettings && $user->darkModeSettings->location_obfuscation_enabled) {
+                // Add some randomness to the distance display
+                $obfuscationRadius = $user->darkModeSettings->location_obfuscation_radius;
+                $randomOffset = (mt_rand(-100, 100) / 100) * $obfuscationRadius;
+                $obfuscatedDistance = max(0, round($user->distance + $randomOffset, 1));
+                $displayDistance = $obfuscatedDistance . ' miles away';
+                $displayDistanceMiles = $obfuscatedDistance;
+            } else {
+                $displayDistance = round($user->distance, 1) . ' miles away';
+                $displayDistanceMiles = round($user->distance, 1);
+            }
+        }
+
+        $distance = $displayDistance;
 
         $heightFormatted = null;
         if ($profile->height) {
@@ -215,7 +241,7 @@ class DiscoveryController extends Controller
             'interests' => $interests,
             'verified' => $user->is_verified,
             'lastActive' => $lastActive,
-            'distance_miles' => isset($user->distance) ? round($user->distance, 1) : null,
+            'distance_miles' => $displayDistanceMiles,
             'is_online' => $user->last_active_at && Carbon::parse($user->last_active_at)->gt(Carbon::now()->subMinutes(15))
         ];
     });

@@ -227,15 +227,29 @@ class MessageController extends Controller
         // Determine receiver ID
         $receiverId = $match->user1_id === $user->id ? $match->user2_id : $match->user1_id;
 
-        // Create message
-        $message = Message::create([
+        // Check if sender has dark mode with auto-delete enabled
+        $darkModeSettings = null;
+        if ($user->dark_mode_enabled) {
+            $darkModeSettings = \App\Models\DarkModeSettings::where('user_id', $user->id)->first();
+        }
+
+        // Prepare message data
+        $messageData = [
             'match_id' => $matchId,
             'sender_id' => $user->id,
             'receiver_id' => $receiverId,
             'content' => trim($request->content),
             'type' => $request->type ?? 'text',
             'is_deleted' => false,
-        ]);
+        ];
+
+        // Add auto-delete settings if enabled
+        if ($darkModeSettings && $darkModeSettings->auto_delete_messages) {
+            $messageData['auto_delete_after_read'] = true;
+        }
+
+        // Create message
+        $message = Message::create($messageData);
 
         // Load the message with sender relationship for broadcasting
         $message->load('sender');
@@ -442,6 +456,21 @@ class MessageController extends Controller
         $message->update([
             'read_at' => now()
         ]);
+
+        // Check if message has auto-delete enabled
+        if ($message->auto_delete_after_read) {
+            // Get sender's dark mode settings to get the delay
+            $sender = User::find($message->sender_id);
+            if ($sender && $sender->dark_mode_enabled) {
+                $darkModeSettings = \App\Models\DarkModeSettings::where('user_id', $sender->id)->first();
+                if ($darkModeSettings && $darkModeSettings->auto_delete_messages) {
+                    $delay = $darkModeSettings->auto_delete_delay;
+                    $message->update([
+                        'expires_at' => now()->addSeconds($delay)
+                    ]);
+                }
+            }
+        }
 
         return response()->json([
             'success' => true,

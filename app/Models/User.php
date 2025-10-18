@@ -27,6 +27,7 @@ class User extends Authenticatable
         'is_verified',
         'is_active',
         'is_admin',
+        'dark_mode_enabled',
         'last_active_at',
         'latitude',
         'longitude',
@@ -52,6 +53,7 @@ class User extends Authenticatable
         'is_verified' => 'boolean',
         'is_active' => 'boolean',
         'is_admin' => 'boolean',
+        'dark_mode_enabled' => 'boolean',
         'latitude' => 'decimal:8',
         'longitude' => 'decimal:8',
         'notification_settings' => 'array',
@@ -135,6 +137,11 @@ class User extends Authenticatable
     public function userProfile(): HasOne
     {
         return $this->hasOne(UserProfile::class, 'user_id', 'id');
+    }
+
+    public function darkModeSettings(): HasOne
+    {
+        return $this->hasOne(DarkModeSettings::class);
     }
 
     // Helper methods

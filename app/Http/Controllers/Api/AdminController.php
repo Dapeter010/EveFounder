@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 //use App\Http\Controllers;
+use App\Models\User;
 use App\Models\UserProfile;
 use App\Models\Matcher;
 use App\Models\Message;
 use App\Models\ProfileBoost;
+use App\Models\ProfileView;
 use App\Models\Like;
 use App\Models\Report;
 use App\Models\ContentModeration;
@@ -15,6 +17,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 
 class AdminController extends Controller
 {
@@ -76,26 +79,33 @@ class AdminController extends Controller
 
     public function users(Request $request): JsonResponse
     {
-        $query = UserProfile::query();
+        $query = User::query();
 
         // Search
-        if ($request->has('search')) {
+        if ($request->has('search') && !empty($request->search)) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('first_name', 'like', "%{$search}%")
                   ->orWhere('last_name', 'like', "%{$search}%")
-                  ->orWhere('username', 'like', "%{$search}%");
+                  ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
         // Filter by status
-        if ($request->has('status')) {
+        if ($request->has('status') && $request->status !== 'all') {
             $query->where('is_active', $request->status === 'active');
         }
 
         // Filter by subscription
-        if ($request->has('subscription')) {
-            // In real app, join with subscription data
+        if ($request->has('subscription') && $request->subscription !== 'all') {
+            // Join with subscriptions table
+            $query->whereHas('subscription', function ($q) use ($request) {
+                if ($request->subscription === 'premium') {
+                    $q->where('plan_type', 'premium');
+                } else if ($request->subscription === 'basic') {
+                    $q->where('plan_type', 'basic');
+                }
+            });
         }
 
         $users = $query->orderBy('created_at', 'desc')
@@ -148,6 +158,7 @@ class AdminController extends Controller
         $validator = Validator::make($request->all(), [
             'is_active' => 'boolean',
             'is_verified' => 'boolean',
+            'dark_mode_enabled' => 'boolean',
             'admin_notes' => 'nullable|string|max:1000'
         ]);
 
@@ -158,7 +169,7 @@ class AdminController extends Controller
             ], 422);
         }
 
-        $user = UserProfile::where('user_id', $userId)->first();
+        $user = User::find($userId);
 
         if (!$user) {
             return response()->json([
@@ -167,12 +178,46 @@ class AdminController extends Controller
             ], 404);
         }
 
-        $user->update($request->only(['is_active', 'is_verified', 'admin_notes']));
+        $user->update($request->only(['is_active', 'is_verified', 'dark_mode_enabled', 'admin_notes']));
 
         return response()->json([
             'success' => true,
             'message' => 'User updated successfully',
             'data' => $user->fresh()
+        ]);
+    }
+
+    /**
+     * Toggle dark mode for a user
+     */
+    public function toggleDarkMode(Request $request, $userId): JsonResponse
+    {
+        $user = User::find($userId);
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not found'
+            ], 404);
+        }
+
+        $user->dark_mode_enabled = !$user->dark_mode_enabled;
+        $user->save();
+
+        // If enabling dark mode, create default settings
+        if ($user->dark_mode_enabled) {
+            \App\Models\DarkModeSettings::getOrCreateForUser($user->id);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $user->dark_mode_enabled
+                ? 'Dark mode enabled for user'
+                : 'Dark mode disabled for user',
+            'data' => [
+                'user_id' => $user->id,
+                'dark_mode_enabled' => $user->dark_mode_enabled
+            ]
         ]);
     }
 
