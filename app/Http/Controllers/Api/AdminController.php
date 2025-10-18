@@ -81,9 +81,9 @@ class AdminController extends Controller
     {
         $query = User::query();
 
-        // Search
-        if ($request->has('search') && !empty($request->search)) {
-            $search = $request->search;
+        // Search - ignore if search is undefined, null, or empty
+        $search = $request->input('search');
+        if ($search && $search !== 'undefined' && $search !== 'null' && trim($search) !== '') {
             $query->where(function ($q) use ($search) {
                 $q->where('first_name', 'like', "%{$search}%")
                   ->orWhere('last_name', 'like', "%{$search}%")
@@ -91,21 +91,27 @@ class AdminController extends Controller
             });
         }
 
-        // Filter by status
-        if ($request->has('status') && $request->status !== 'all') {
-            $query->where('is_active', $request->status === 'active');
+        // Filter by status - ignore if status is undefined, null, or all
+        $status = $request->input('status');
+        if ($status && $status !== 'undefined' && $status !== 'null' && $status !== 'all') {
+            $query->where('is_active', $status === 'active');
         }
 
-        // Filter by subscription
-        if ($request->has('subscription') && $request->subscription !== 'all') {
-            // Join with subscriptions table
-            $query->whereHas('subscription', function ($q) use ($request) {
-                if ($request->subscription === 'premium') {
+        // Filter by subscription - ignore if subscription is undefined, null, or all
+        $subscription = $request->input('subscription');
+        if ($subscription && $subscription !== 'undefined' && $subscription !== 'null' && $subscription !== 'all') {
+            if ($subscription === 'premium') {
+                $query->whereHas('subscription', function ($q) {
                     $q->where('plan_type', 'premium');
-                } else if ($request->subscription === 'basic') {
+                });
+            } else if ($subscription === 'basic') {
+                $query->whereHas('subscription', function ($q) {
                     $q->where('plan_type', 'basic');
-                }
-            });
+                });
+            } else if ($subscription === 'none') {
+                // Users with no active subscription
+                $query->whereDoesntHave('subscription');
+            }
         }
 
         $users = $query->with(['subscription', 'photos'])
@@ -161,7 +167,7 @@ class AdminController extends Controller
                 'likes_received' => $likesReceived,
                 'photos_count' => $user->photos->count(),
                 'bio_length' => strlen($user->bio ?? ''),
-                'phone' => $user->phone ?? 'N/A',
+                'phone' => 'N/A', // Phone field not in User model
                 'subscription_start' => $subscription ? $subscription->created_at->format('Y-m-d') : null,
                 'total_spent' => '£' . number_format($totalSpent / 100, 2),
             ];
