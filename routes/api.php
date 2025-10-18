@@ -148,7 +148,7 @@ Route::group(['middleware' => ['auth:sanctum']], function () {
     Route::get('/matches/{matchId}/active-call', [CallController::class, 'activeCall']);
 
     // Admin routes
-    Route::prefix('admin')->group(function () { // In real app: add admin middleware
+    Route::prefix('admin')->middleware('admin')->group(function () {
         Route::get('/dashboard', [AdminController::class, 'dashboard']);
         Route::get('/users', [AdminController::class, 'users']);
         Route::get('/users/{userId}', [AdminController::class, 'userDetails']);
